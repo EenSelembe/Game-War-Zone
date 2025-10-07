@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Rise of Kingdoms: Tiga Suku</title>
+<link rel="icon" type="image/png" href="public/icon-192.png">
+<style>
+  @keyframes fadein {
+    from { opacity: 0; transform: scale(0.95); }
+    to { opacity: 1; transform: scale(1); }
+  }
+
+  html, body {
+    margin: 0;
+    padding: 0;
+    height: 100%;
+    background: radial-gradient(circle at center, #345c3a 0%, #1a2e1c 100%);
+    font-family: "Trebuchet MS", Arial, sans-serif;
+    overflow: hidden;
+  }
+
+  .container {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+    color: #f5eec2;
+    animation: fadein 1s ease-in-out;
+  }
+
+  h1 {
+    font-size: 2.6rem;
+    margin-bottom: 10px;
+    text-shadow: 0 0 12px #ffd700, 0 0 24px #8bc34a;
+    letter-spacing: 2px;
+  }
+
+  h2 {
+    font-size: 1rem;
+    font-weight: 300;
+    margin-bottom: 40px;
+    opacity: 0.8;
+  }
+
+  .btn {
+    background: linear-gradient(90deg, #c0a64b, #f7e06e);
+    color: #1b1b1b;
+    border: none;
+    border-radius: 10px;
+    padding: 14px 30px;
+    font-size: 18px;
+    font-weight: bold;
+    cursor: pointer;
+    box-shadow: 0 0 12px rgba(255, 215, 0, 0.7);
+    transition: all 0.25s;
+  }
+  .btn:hover {
+    transform: scale(1.05);
+    background: linear-gradient(90deg, #f7e06e, #fff599);
+  }
+
+  footer {
+    position: absolute;
+    bottom: 10px;
+    font-size: 12px;
+    color: #c7c7c7;
+    opacity: 0.7;
+  }
+</style>
+</head>
+<body>
+
+<div class="container">
+  <h1>🌍 Rise of Kingdoms: Tiga Suku</h1>
+  <h2>Manusia • Hewan • Robot</h2>
+
+  <button class="btn" onclick="mulaiGame()">▶️ Mulai Permainan</button>
+</div>
+
+<footer>© 2025 Dusun Tanah Merah Studio</footer>
+
+<script>
+function mulaiGame() {
+  window.location.href = "map/zoom-control.html";
+}
+</script>
+</body>
+</html>
