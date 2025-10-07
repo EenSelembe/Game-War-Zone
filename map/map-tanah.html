@@ -19,16 +19,34 @@
       height: 100vh;
       touch-action: none;
     }
+    #startBtn {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: rgba(255, 215, 0, 0.85);
+      color: #000;
+      font-weight: bold;
+      font-size: 20px;
+      padding: 12px 28px;
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+      z-index: 10;
+      box-shadow: 0 0 12px gold;
+      transition: opacity .4s ease;
+    }
   </style>
 </head>
 <body>
   <canvas id="mapCanvas"></canvas>
+  <button id="startBtn">Mulai</button>
 
   <script>
     const canvas = document.getElementById('mapCanvas');
     const ctx = canvas.getContext('2d');
+    const btn = document.getElementById('startBtn');
 
-    // Gunakan link RAW GitHub agar gambar muncul
     const img = new Image();
     img.src = "https://raw.githubusercontent.com/EenSelembe/Game-War-Zone/main/public/image/map.jpg";
 
@@ -38,6 +56,17 @@
     let lastX = 0, lastY = 0;
     let lastDist = 0;
     let imgW = 0, imgH = 0;
+
+    // ========== FULLSCREEN ==========
+    btn.addEventListener('click', () => {
+      if (document.documentElement.requestFullscreen) {
+        document.documentElement.requestFullscreen();
+      } else if (document.documentElement.webkitRequestFullscreen) {
+        document.documentElement.webkitRequestFullscreen();
+      }
+      btn.style.opacity = '0';
+      setTimeout(() => btn.style.display = 'none', 400);
+    });
 
     function resizeCanvas() {
       canvas.width = window.innerWidth;
@@ -59,12 +88,8 @@
     function constrainPosition() {
       const w = imgW * scale;
       const h = imgH * scale;
-      const minX = (canvas.width - w) / 2;
-      const maxX = (w - canvas.width) / 2;
-      const minY = (canvas.height - h) / 2;
-      const maxY = (h - canvas.height) / 2;
-
-      // Batasi agar gambar tidak meninggalkan layar
+      const maxX = Math.max(0, (w - canvas.width) / 2);
+      const maxY = Math.max(0, (h - canvas.height) / 2);
       posX = Math.min(maxX, Math.max(posX, -maxX));
       posY = Math.min(maxY, Math.max(posY, -maxY));
     }
@@ -77,7 +102,7 @@
 
     window.addEventListener('resize', resizeCanvas);
 
-    // Gesture: geser & pinch zoom
+    // ======== Gesture sentuh ========
     canvas.addEventListener('touchstart', e => {
       if (e.touches.length === 2) {
         const dx = e.touches[0].clientX - e.touches[1].clientX;
@@ -109,12 +134,9 @@
           const ratio = dist / lastDist;
           const oldScale = scale;
           scale *= ratio;
-          scale = Math.max(0.8, Math.min(scale, 3)); // batasi zoom out & zoom in
-          
-          // posisi tetap di tengah zoom
+          scale = Math.max(0.8, Math.min(scale, 3));
           posX *= scale / oldScale;
           posY *= scale / oldScale;
-
           constrainPosition();
           draw();
         }
@@ -127,7 +149,7 @@
       lastDist = 0;
     });
 
-    // Dukungan mouse (buat test di PC)
+    // ======== Dukungan mouse (PC) ========
     let isMouseDown = false;
     canvas.addEventListener('mousedown', e => {
       isMouseDown = true;
@@ -147,7 +169,7 @@
       draw();
     });
 
-    // Zoom pakai scroll di PC
+    // ======== Scroll zoom (PC) ========
     window.addEventListener('wheel', e => {
       const oldScale = scale;
       const delta = e.deltaY < 0 ? 1.1 : 0.9;
