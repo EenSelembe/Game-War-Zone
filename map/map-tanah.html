@@ -28,7 +28,7 @@
     const canvas = document.getElementById('mapCanvas');
     const ctx = canvas.getContext('2d');
 
-    // gunakan link RAW agar gambar bisa tampil
+    // Gunakan link RAW GitHub agar gambar muncul
     const img = new Image();
     img.src = "https://raw.githubusercontent.com/EenSelembe/Game-War-Zone/main/public/image/map.jpg";
 
@@ -37,24 +37,41 @@
     let dragging = false;
     let lastX = 0, lastY = 0;
     let lastDist = 0;
+    let imgW = 0, imgH = 0;
 
     function resizeCanvas() {
       canvas.width = window.innerWidth;
       canvas.height = window.innerHeight;
+      constrainPosition();
       draw();
     }
 
     function draw() {
       if (!img.complete) return;
       ctx.clearRect(0, 0, canvas.width, canvas.height);
-      const w = img.width * scale;
-      const h = img.height * scale;
+      const w = imgW * scale;
+      const h = imgH * scale;
       const x = (canvas.width - w) / 2 + posX;
       const y = (canvas.height - h) / 2 + posY;
       ctx.drawImage(img, x, y, w, h);
     }
 
+    function constrainPosition() {
+      const w = imgW * scale;
+      const h = imgH * scale;
+      const minX = (canvas.width - w) / 2;
+      const maxX = (w - canvas.width) / 2;
+      const minY = (canvas.height - h) / 2;
+      const maxY = (h - canvas.height) / 2;
+
+      // Batasi agar gambar tidak meninggalkan layar
+      posX = Math.min(maxX, Math.max(posX, -maxX));
+      posY = Math.min(maxY, Math.max(posY, -maxY));
+    }
+
     img.onload = () => {
+      imgW = img.width;
+      imgH = img.height;
       resizeCanvas();
     };
 
@@ -82,6 +99,7 @@
         lastY = e.touches[0].clientY;
         posX += dx;
         posY += dy;
+        constrainPosition();
         draw();
       } else if (e.touches.length === 2) {
         const dx = e.touches[0].clientX - e.touches[1].clientX;
@@ -89,8 +107,15 @@
         const dist = Math.hypot(dx, dy);
         if (lastDist) {
           const ratio = dist / lastDist;
+          const oldScale = scale;
           scale *= ratio;
-          scale = Math.max(0.5, Math.min(scale, 3)); // batas zoom
+          scale = Math.max(0.8, Math.min(scale, 3)); // batasi zoom out & zoom in
+          
+          // posisi tetap di tengah zoom
+          posX *= scale / oldScale;
+          posY *= scale / oldScale;
+
+          constrainPosition();
           draw();
         }
         lastDist = dist;
@@ -102,16 +127,14 @@
       lastDist = 0;
     });
 
-    // dukungan mouse untuk testing di PC
+    // Dukungan mouse (buat test di PC)
     let isMouseDown = false;
     canvas.addEventListener('mousedown', e => {
       isMouseDown = true;
       lastX = e.clientX;
       lastY = e.clientY;
     });
-
     window.addEventListener('mouseup', () => isMouseDown = false);
-
     window.addEventListener('mousemove', e => {
       if (!isMouseDown) return;
       const dx = e.clientX - lastX;
@@ -120,14 +143,19 @@
       lastY = e.clientY;
       posX += dx;
       posY += dy;
+      constrainPosition();
       draw();
     });
 
-    // zoom pakai scroll di PC
+    // Zoom pakai scroll di PC
     window.addEventListener('wheel', e => {
+      const oldScale = scale;
       const delta = e.deltaY < 0 ? 1.1 : 0.9;
       scale *= delta;
-      scale = Math.max(0.5, Math.min(scale, 3));
+      scale = Math.max(0.8, Math.min(scale, 3));
+      posX *= scale / oldScale;
+      posY *= scale / oldScale;
+      constrainPosition();
       draw();
     });
   </script>
