@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Peta Dunia Halus Besar</title>
+<title>Peta Dunia Alami - Hutan & Sungai</title>
 <style>
   html, body {
     margin: 0;
@@ -23,37 +23,68 @@
 <canvas id="map"></canvas>
 
 <script>
+// ===== SETUP DASAR =====
 const canvas = document.getElementById("map");
 const ctx = canvas.getContext("2d");
 canvas.width = window.innerWidth;
 canvas.height = window.innerHeight;
 
-// === PARAMETER UTAMA ===
-const mapSize = 12000; // ukuran dunia besar (piksel)
+const mapSize = 12000;   // luas dunia besar
 let camX = mapSize / 2 - window.innerWidth / 2;
 let camY = mapSize / 2 - window.innerHeight / 2;
 let scale = 1;
 
-// === BUAT TEKSTUR TANAH HALUS ===
-const img = ctx.createImageData(mapSize, mapSize);
-for (let i = 0; i < img.data.length; i += 4) {
-  // variasi hijau lembut alami
-  const base = 80 + Math.random() * 12; 
-  img.data[i] = base * 0.5;    // R
-  img.data[i+1] = base;        // G
-  img.data[i+2] = base * 0.5;  // B
-  img.data[i+3] = 255;         // A
+// ===== GENERATOR WARNA TANAH / HUTAN / AIR =====
+function generateColor(x, y) {
+  // gunakan pola acak halus berdasarkan posisi
+  const nx = x / mapSize - 0.5;
+  const ny = y / mapSize - 0.5;
+  const noise = Math.sin(nx * 40) * Math.cos(ny * 40) +
+                Math.sin(nx * 10) * Math.cos(ny * 10) +
+                Math.random() * 0.2;
+
+  // peta ketinggian
+  const h = (noise + 1) / 2; // 0..1
+
+  // air
+  if (h < 0.38) {
+    const blue = 180 + h * 50;
+    return `rgb(${blue * 0.3}, ${blue * 0.6}, ${blue})`;
+  }
+  // pantai
+  if (h < 0.42) return `rgb(205, 189, 121)`;
+  // hutan
+  if (h < 0.7) {
+    const g = 80 + h * 80;
+    return `rgb(${g * 0.5}, ${g}, ${g * 0.5})`;
+  }
+  // gunung
+  const grey = 80 + h * 100;
+  return `rgb(${grey}, ${grey * 0.95}, ${grey * 0.9})`;
 }
 
-// === SIMPAN TEKSTUR DI OFFSCREEN CANVAS ===
+// ===== BUAT TEKSTUR PETA =====
 const offCanvas = document.createElement("canvas");
 offCanvas.width = mapSize;
 offCanvas.height = mapSize;
 const offCtx = offCanvas.getContext("2d");
 offCtx.imageSmoothingEnabled = true;
+
+const img = offCtx.createImageData(mapSize, mapSize);
+for (let y = 0; y < mapSize; y++) {
+  for (let x = 0; x < mapSize; x++) {
+    const color = generateColor(x, y);
+    const [r, g, b] = color.match(/\d+/g).map(Number);
+    const index = (y * mapSize + x) * 4;
+    img.data[index] = r;
+    img.data[index + 1] = g;
+    img.data[index + 2] = b;
+    img.data[index + 3] = 255;
+  }
+}
 offCtx.putImageData(img, 0, 0);
 
-// === FUNGSI GAMBAR ===
+// ===== RENDER PETA =====
 function draw() {
   ctx.setTransform(scale, 0, 0, scale, -camX * scale, -camY * scale);
   ctx.imageSmoothingEnabled = true;
@@ -61,7 +92,7 @@ function draw() {
 }
 draw();
 
-// === DRAG UNTUK GESER PETA ===
+// ===== GESER (DRAG) =====
 let dragging = false, lastX, lastY;
 canvas.addEventListener("mousedown", e => {
   dragging = true;
@@ -83,18 +114,17 @@ window.addEventListener("mousemove", e => {
   }
 });
 
-// === ZOOM DENGAN SCROLL ===
+// ===== ZOOM =====
 window.addEventListener("wheel", e => {
   e.preventDefault();
   const zoomIntensity = 0.1;
   const oldScale = scale;
-  if (e.deltaY < 0) scale *= (1 + zoomIntensity);
-  else scale *= (1 - zoomIntensity);
-  scale = Math.max(0.2, Math.min(scale, 6)); // batas zoom
+  scale *= e.deltaY < 0 ? (1 + zoomIntensity) : (1 - zoomIntensity);
+  scale = Math.max(0.2, Math.min(scale, 6));
   draw();
 });
 
-// === SESUAIKAN DENGAN LAYAR ===
+// ===== RESIZE =====
 window.addEventListener("resize", () => {
   canvas.width = window.innerWidth;
   canvas.height = window.innerHeight;
