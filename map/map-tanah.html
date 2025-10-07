@@ -23,14 +23,14 @@
 </head>
 <body>
   <canvas id="mapCanvas"></canvas>
+
   <script>
     const canvas = document.getElementById('mapCanvas');
     const ctx = canvas.getContext('2d');
 
-    let img = new Image();
-    // URL gambar — sesuaikan path-nya dengan repo GitHub-mu
-    img.src = "public/image/map.jpg";
-    // Jika file html berada di folder /map/, maka mungkin URL-nya jadi "../public/image/map.jpg"
+    // gunakan link RAW agar gambar bisa tampil
+    const img = new Image();
+    img.src = "https://raw.githubusercontent.com/EenSelembe/Game-War-Zone/main/public/image/map.jpg";
 
     let scale = 1;
     let posX = 0, posY = 0;
@@ -45,10 +45,10 @@
     }
 
     function draw() {
+      if (!img.complete) return;
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       const w = img.width * scale;
       const h = img.height * scale;
-      // Gambar dipusatkan + offset posX, posY
       const x = (canvas.width - w) / 2 + posX;
       const y = (canvas.height - h) / 2 + posY;
       ctx.drawImage(img, x, y, w, h);
@@ -58,11 +58,9 @@
       resizeCanvas();
     };
 
-    window.addEventListener('resize', () => {
-      resizeCanvas();
-    });
+    window.addEventListener('resize', resizeCanvas);
 
-    // Gesture – pinch zoom
+    // Gesture: geser & pinch zoom
     canvas.addEventListener('touchstart', e => {
       if (e.touches.length === 2) {
         const dx = e.touches[0].clientX - e.touches[1].clientX;
@@ -92,7 +90,7 @@
         if (lastDist) {
           const ratio = dist / lastDist;
           scale *= ratio;
-          scale = Math.max(0.5, Math.min(scale, 3));
+          scale = Math.max(0.5, Math.min(scale, 3)); // batas zoom
           draw();
         }
         lastDist = dist;
@@ -102,6 +100,35 @@
     canvas.addEventListener('touchend', () => {
       dragging = false;
       lastDist = 0;
+    });
+
+    // dukungan mouse untuk testing di PC
+    let isMouseDown = false;
+    canvas.addEventListener('mousedown', e => {
+      isMouseDown = true;
+      lastX = e.clientX;
+      lastY = e.clientY;
+    });
+
+    window.addEventListener('mouseup', () => isMouseDown = false);
+
+    window.addEventListener('mousemove', e => {
+      if (!isMouseDown) return;
+      const dx = e.clientX - lastX;
+      const dy = e.clientY - lastY;
+      lastX = e.clientX;
+      lastY = e.clientY;
+      posX += dx;
+      posY += dy;
+      draw();
+    });
+
+    // zoom pakai scroll di PC
+    window.addEventListener('wheel', e => {
+      const delta = e.deltaY < 0 ? 1.1 : 0.9;
+      scale *= delta;
+      scale = Math.max(0.5, Math.min(scale, 3));
+      draw();
     });
   </script>
 </body>
