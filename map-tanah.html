@@ -1,202 +1,157 @@
-<!DOCTYPE html>
-<html lang="id">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-  <title>Map Padang Pasir</title>
-  <style>
-    html, body {
-      margin: 0;
-      padding: 0;
-      height: 100%;
-      overflow: hidden;
-      background: #000;
-      touch-action: none;
-    }
-    canvas {
-      display: block;
-      width: 100vw;
-      height: 100vh;
-      touch-action: none;
-    }
-    #startBtn {
-      position: absolute;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      background: rgba(255, 215, 0, 0.85);
-      color: #000;
-      font-weight: bold;
-      font-size: 20px;
-      padding: 12px 28px;
-      border: none;
-      border-radius: 10px;
-      cursor: pointer;
-      z-index: 10;
-      box-shadow: 0 0 12px gold;
-      transition: opacity .4s ease;
-    }
-  </style>
-</head>
-<body>
-  <canvas id="mapCanvas"></canvas>
-  <button id="startBtn">Mulai</button>
+<script>
+const canvas = document.getElementById('mapCanvas');
+const ctx = canvas.getContext('2d');
+const btn = document.getElementById('startBtn');
 
-  <script>
-    const canvas = document.getElementById('mapCanvas');
-    const ctx = canvas.getContext('2d');
-    const btn = document.getElementById('startBtn');
+// ===== FULLSCREEN =====
+btn.addEventListener('click', () => {
+  if (document.documentElement.requestFullscreen) {
+    document.documentElement.requestFullscreen();
+  } else if (document.documentElement.webkitRequestFullscreen) {
+    document.documentElement.webkitRequestFullscreen();
+  }
+  btn.style.opacity = '0';
+  setTimeout(() => btn.style.display = 'none', 400);
+});
 
-    // ===== FULLSCREEN =====
-    btn.addEventListener('click', () => {
-      if (document.documentElement.requestFullscreen) {
-        document.documentElement.requestFullscreen();
-      } else if (document.documentElement.webkitRequestFullscreen) {
-        document.documentElement.webkitRequestFullscreen();
-      }
-      btn.style.opacity = '0';
-      setTimeout(() => btn.style.display = 'none', 400);
-    });
+// ===== MAP IMAGE =====
+const img = new Image();
+img.src = "https://raw.githubusercontent.com/EenSelembe/Game-War-Zone/main/public/image/map.jpg";
 
-    // ===== MAP IMAGE =====
-    const img = new Image();
-    img.src = "https://raw.githubusercontent.com/EenSelembe/Game-War-Zone/main/public/image/map.jpg";
+let scale = 1;
+let posX = 0, posY = 0; // kamera
+let dragging = false;
+let lastX = 0, lastY = 0;
+let lastDist = 0;
+let imgW = 0, imgH = 0;
 
-    let scale = 1;
-    let posX = 0, posY = 0;
-    let dragging = false;
-    let lastX = 0, lastY = 0;
-    let lastDist = 0;
-    let imgW = 0, imgH = 0;
+// CASTILE (bangunan utama)
+const castle = new Image();
+const type = localStorage.getItem('castleType') || 'human';
+castle.src = `https://raw.githubusercontent.com/EenSelembe/Game-War-Zone/main/public/image/castile-${type}.png`;
 
-    // CASTILE (bangunan utama)
-    const castle = new Image();
-    const type = localStorage.getItem('castleType') || 'human';
-    castle.src = `https://raw.githubusercontent.com/EenSelembe/Game-War-Zone/main/public/image/castile-${type}.png`;
+// Posisi kastil di koordinat dunia (bukan layar)
+const castleWorld = { x: 0, y: 150, size: 150 };
 
-    // posisi kastil relatif terhadap map (bukan layar)
-    // (0,0) = tengah map, makin positif ke kanan/bawah
-    const castlePos = { x: 0, y: 150, size: 150 };
+function resizeCanvas() {
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+  constrainCamera();
+  draw();
+}
 
-    function resizeCanvas() {
-      canvas.width = window.innerWidth;
-      canvas.height = window.innerHeight;
-      constrainPosition();
-      draw();
-    }
+function constrainCamera() {
+  const w = imgW * scale;
+  const h = imgH * scale;
+  const maxX = Math.max(0, (w - canvas.width) / 2);
+  const maxY = Math.max(0, (h - canvas.height) / 2);
+  posX = Math.min(maxX, Math.max(posX, -maxX));
+  posY = Math.min(maxY, Math.max(posY, -maxY));
+}
 
-    function constrainPosition() {
-      const w = imgW * scale;
-      const h = imgH * scale;
-      const maxX = Math.max(0, (w - canvas.width) / 2);
-      const maxY = Math.max(0, (h - canvas.height) / 2);
-      posX = Math.min(maxX, Math.max(posX, -maxX));
-      posY = Math.min(maxY, Math.max(posY, -maxY));
-    }
+function draw() {
+  if (!img.complete) return;
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    function draw() {
-      if (!img.complete) return;
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
+  // ===== gambar map =====
+  const mapScreenX = (canvas.width / 2) - (imgW * scale) / 2 + posX;
+  const mapScreenY = (canvas.height / 2) - (imgH * scale) / 2 + posY;
+  ctx.drawImage(img, mapScreenX, mapScreenY, imgW * scale, imgH * scale);
 
-      const w = imgW * scale;
-      const h = imgH * scale;
-      const mapX = (canvas.width - w) / 2 + posX;
-      const mapY = (canvas.height - h) / 2 + posY;
+  // ===== gambar kastil =====
+  if (castle.complete) {
+    // hitung posisi kastil relatif terhadap kamera
+    const worldToScreenX = (canvas.width / 2) + castleWorld.x * scale + posX;
+    const worldToScreenY = (canvas.height / 2) + castleWorld.y * scale + posY;
+    const s = castleWorld.size * scale;
 
-      // gambar map
-      ctx.drawImage(img, mapX, mapY, w, h);
+    ctx.drawImage(castle, worldToScreenX - s / 2, worldToScreenY - s / 2, s, s);
+  }
+}
 
-      // gambar kastil (dihitung relatif ke map)
-      if (castle.complete) {
-        const cx = canvas.width / 2 + castlePos.x * scale - castlePos.size / 2;
-        const cy = canvas.height / 2 + castlePos.y * scale - castlePos.size / 2;
-        const s = castlePos.size * scale;
-        ctx.drawImage(castle, cx, cy, s, s);
-      }
-    }
+img.onload = () => {
+  imgW = img.width;
+  imgH = img.height;
+  resizeCanvas();
+};
 
-    img.onload = () => {
-      imgW = img.width;
-      imgH = img.height;
-      resizeCanvas();
-    };
+window.addEventListener('resize', resizeCanvas);
 
-    window.addEventListener('resize', resizeCanvas);
+// ======== GESTURE ========
+canvas.addEventListener('touchstart', e => {
+  if (e.touches.length === 2) {
+    const dx = e.touches[0].clientX - e.touches[1].clientX;
+    const dy = e.touches[0].clientY - e.touches[1].clientY;
+    lastDist = Math.hypot(dx, dy);
+  } else if (e.touches.length === 1) {
+    dragging = true;
+    lastX = e.touches[0].clientX;
+    lastY = e.touches[0].clientY;
+  }
+});
 
-    // ===== GESTURE: geser & pinch zoom =====
-    canvas.addEventListener('touchstart', e => {
-      if (e.touches.length === 2) {
-        const dx = e.touches[0].clientX - e.touches[1].clientX;
-        const dy = e.touches[0].clientY - e.touches[1].clientY;
-        lastDist = Math.hypot(dx, dy);
-      } else if (e.touches.length === 1) {
-        dragging = true;
-        lastX = e.touches[0].clientX;
-        lastY = e.touches[0].clientY;
-      }
-    });
-
-    canvas.addEventListener('touchmove', e => {
-      e.preventDefault();
-      if (e.touches.length === 1 && dragging) {
-        const dx = e.touches[0].clientX - lastX;
-        const dy = e.touches[0].clientY - lastY;
-        lastX = e.touches[0].clientX;
-        lastY = e.touches[0].clientY;
-        posX += dx;
-        posY += dy;
-        constrainPosition();
-        draw();
-      } else if (e.touches.length === 2) {
-        const dx = e.touches[0].clientX - e.touches[1].clientX;
-        const dy = e.touches[0].clientY - e.touches[1].clientY;
-        const dist = Math.hypot(dx, dy);
-        if (lastDist) {
-          const ratio = dist / lastDist;
-          const oldScale = scale;
-          scale *= ratio;
-          scale = Math.max(0.8, Math.min(scale, 3));
-          posX *= scale / oldScale;
-          posY *= scale / oldScale;
-          constrainPosition();
-          draw();
-        }
-        lastDist = dist;
-      }
-    });
-
-    canvas.addEventListener('touchend', () => {
-      dragging = false;
-      lastDist = 0;
-    });
-
-    // Mouse support (PC)
-    let isMouseDown = false;
-    canvas.addEventListener('mousedown', e => { isMouseDown = true; lastX = e.clientX; lastY = e.clientY; });
-    window.addEventListener('mouseup', () => isMouseDown = false);
-    window.addEventListener('mousemove', e => {
-      if (!isMouseDown) return;
-      const dx = e.clientX - lastX;
-      const dy = e.clientY - lastY;
-      lastX = e.clientX;
-      lastY = e.clientY;
-      posX += dx;
-      posY += dy;
-      constrainPosition();
-      draw();
-    });
-
-    // Scroll zoom (untuk PC)
-    window.addEventListener('wheel', e => {
+canvas.addEventListener('touchmove', e => {
+  e.preventDefault();
+  if (e.touches.length === 1 && dragging) {
+    const dx = e.touches[0].clientX - lastX;
+    const dy = e.touches[0].clientY - lastY;
+    lastX = e.touches[0].clientX;
+    lastY = e.touches[0].clientY;
+    posX += dx;
+    posY += dy;
+    constrainCamera();
+    draw();
+  } else if (e.touches.length === 2) {
+    const dx = e.touches[0].clientX - e.touches[1].clientX;
+    const dy = e.touches[0].clientY - e.touches[1].clientY;
+    const dist = Math.hypot(dx, dy);
+    if (lastDist) {
+      const ratio = dist / lastDist;
       const oldScale = scale;
-      const delta = e.deltaY < 0 ? 1.1 : 0.9;
-      scale *= delta;
+      scale *= ratio;
       scale = Math.max(0.8, Math.min(scale, 3));
       posX *= scale / oldScale;
       posY *= scale / oldScale;
-      constrainPosition();
+      constrainCamera();
       draw();
-    });
+    }
+    lastDist = dist;
+  }
+});
+
+canvas.addEventListener('touchend', () => {
+  dragging = false;
+  lastDist = 0;
+});
+
+// ======== Mouse control (PC) ========
+let isMouseDown = false;
+canvas.addEventListener('mousedown', e => {
+  isMouseDown = true;
+  lastX = e.clientX;
+  lastY = e.clientY;
+});
+window.addEventListener('mouseup', () => isMouseDown = false);
+window.addEventListener('mousemove', e => {
+  if (!isMouseDown) return;
+  const dx = e.clientX - lastX;
+  const dy = e.clientY - lastY;
+  lastX = e.clientX;
+  lastY = e.clientY;
+  posX += dx;
+  posY += dy;
+  constrainCamera();
+  draw();
+});
+
+window.addEventListener('wheel', e => {
+  const oldScale = scale;
+  const delta = e.deltaY < 0 ? 1.1 : 0.9;
+  scale *= delta;
+  scale = Math.max(0.8, Math.min(scale, 3));
+  posX *= scale / oldScale;
+  posY *= scale / oldScale;
+  constrainCamera();
+  draw();
+});
   </script>
-</body>
-</html>
