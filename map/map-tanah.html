@@ -2,8 +2,8 @@
 <html lang="id">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Peta Dunia - Kamera Miring</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Peta Dunia - Kamera Miring (Pinch Zoom)</title>
 <style>
   html, body {
     margin: 0;
@@ -15,6 +15,7 @@
   canvas {
     display: block;
     cursor: grab;
+    touch-action: none; /* penting agar gestur pinch & drag bekerja */
   }
 </style>
 </head>
@@ -22,7 +23,7 @@
 <canvas id="map"></canvas>
 
 <script>
-// ===== SETUP DASAR =====
+// === SETUP DASAR ===
 const canvas = document.getElementById("map");
 const ctx = canvas.getContext("2d");
 canvas.width = window.innerWidth;
@@ -33,7 +34,7 @@ let camX = mapSize/2 - window.innerWidth/2;
 let camY = mapSize/2 - window.innerHeight/2;
 let scale = 1;
 
-// ===== FUNGSI PEMBANGKIT WARNA =====
+// === GENERATOR WARNA ===
 function noise(x, y) {
   return Math.sin(x*0.0012 + Math.cos(y*0.0008)) * 0.5 +
          Math.sin(x*0.0003 - y*0.001) * 0.5;
@@ -65,7 +66,7 @@ function generateColor(x, y) {
   return `rgb(${grey},${grey*0.9},${grey*0.8})`;
 }
 
-// ===== GENERATE PETA =====
+// === BUAT GAMBAR MAP BESAR ===
 const offCanvas = document.createElement("canvas");
 offCanvas.width = mapSize;
 offCanvas.height = mapSize;
@@ -81,18 +82,14 @@ for (let y=0; y<mapSize; y++) {
 }
 offCtx.putImageData(img,0,0);
 
-// ===== DRAW FUNKSI =====
+// === FUNGSI GAMBAR ===
 function draw() {
   ctx.setTransform(scale, 0, 0, scale, -camX*scale, -camY*scale);
   ctx.imageSmoothingEnabled = true;
-
-  // efek kamera miring — sedikit condong ke bawah
   ctx.save();
-  const tilt = 0.5; // makin besar makin miring
+  const tilt = 0.5;
   ctx.transform(1, -tilt, 0, 1, 0, 0);
   ctx.drawImage(offCanvas, 0, 0);
-
-  // efek bayangan jarak
   const grad = ctx.createLinearGradient(0, 0, 0, mapSize);
   grad.addColorStop(0, "rgba(0,0,0,0.4)");
   grad.addColorStop(0.5, "rgba(0,0,0,0.1)");
@@ -103,27 +100,62 @@ function draw() {
 }
 draw();
 
-// ===== DRAG & ZOOM =====
+// === DRAG DENGAN SATU JARI / MOUSE ===
 let dragging=false,lastX,lastY;
 canvas.addEventListener("mousedown",e=>{
-  dragging=true;lastX=e.clientX;lastY=e.clientY;canvas.style.cursor="grabbing";
+  dragging=true; lastX=e.clientX; lastY=e.clientY; canvas.style.cursor="grabbing";
 });
-window.addEventListener("mouseup",()=>{dragging=false;canvas.style.cursor="grab";});
+window.addEventListener("mouseup",()=>{dragging=false; canvas.style.cursor="grab";});
 window.addEventListener("mousemove",e=>{
-  if(dragging){
-    camX -= (e.clientX-lastX)/scale;
-    camY -= (e.clientY-lastY)/scale;
-    lastX=e.clientX; lastY=e.clientY;
-    draw();
-  }
-});
-window.addEventListener("wheel",e=>{
-  e.preventDefault();
-  const zoom=0.1;
-  scale*= e.deltaY<0 ? (1+zoom):(1-zoom);
-  scale=Math.max(0.2,Math.min(scale,5));
+  if(!dragging)return;
+  camX -= (e.clientX-lastX)/scale;
+  camY -= (e.clientY-lastY)/scale;
+  lastX=e.clientX; lastY=e.clientY;
   draw();
 });
+
+// === GESTUR PINCH ZOOM (dua jari) ===
+let lastDist = null;
+canvas.addEventListener("touchstart", e => {
+  if (e.touches.length === 2) {
+    const dx = e.touches[0].clientX - e.touches[1].clientX;
+    const dy = e.touches[0].clientY - e.touches[1].clientY;
+    lastDist = Math.hypot(dx, dy);
+  }
+  if (e.touches.length === 1) {
+    lastX = e.touches[0].clientX;
+    lastY = e.touches[0].clientY;
+  }
+});
+canvas.addEventListener("touchmove", e => {
+  e.preventDefault();
+  // geser satu jari
+  if (e.touches.length === 1 && lastX !== null) {
+    const dx = e.touches[0].clientX - lastX;
+    const dy = e.touches[0].clientY - lastY;
+    camX -= dx / scale;
+    camY -= dy / scale;
+    lastX = e.touches[0].clientX;
+    lastY = e.touches[0].clientY;
+    draw();
+  }
+  // pinch dua jari untuk zoom
+  if (e.touches.length === 2) {
+    const dx = e.touches[0].clientX - e.touches[1].clientX;
+    const dy = e.touches[0].clientY - e.touches[1].clientY;
+    const dist = Math.hypot(dx, dy);
+    if (lastDist) {
+      const zoom = dist / lastDist;
+      scale *= zoom;
+      scale = Math.max(0.2, Math.min(scale, 5));
+      draw();
+    }
+    lastDist = dist;
+  }
+});
+canvas.addEventListener("touchend", () => { lastDist = null; });
+
+// === RESIZE ===
 window.addEventListener("resize",()=>{
   canvas.width=window.innerWidth;
   canvas.height=window.innerHeight;
