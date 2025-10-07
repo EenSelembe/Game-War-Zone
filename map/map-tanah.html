@@ -1,162 +1,108 @@
 <!DOCTYPE html>
 <html lang="id">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-<title>Peta Dunia - Dynamic Loader</title>
-<style>
-  html, body {
-    margin: 0;
-    padding: 0;
-    overflow: hidden;
-    height: 100%;
-    background: #162d19;
-  }
-  canvas {
-    display: block;
-    cursor: grab;
-    touch-action: none;
-  }
-</style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>Map Padang Pasir</title>
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      height: 100%;
+      overflow: hidden;
+      background: #000;
+      touch-action: none;
+    }
+    canvas {
+      display: block;
+      width: 100vw;
+      height: 100vh;
+      touch-action: none;
+    }
+  </style>
 </head>
 <body>
-<canvas id="map"></canvas>
+  <canvas id="mapCanvas"></canvas>
+  <script>
+    const canvas = document.getElementById('mapCanvas');
+    const ctx = canvas.getContext('2d');
 
-<script>
-// ===== SETUP DASAR =====
-const canvas = document.getElementById("map");
-const ctx = canvas.getContext("2d");
-canvas.width = window.innerWidth;
-canvas.height = window.innerHeight;
+    let img = new Image();
+    // URL gambar — sesuaikan path-nya dengan repo GitHub-mu
+    img.src = "public/image/map.jpg";
+    // Jika file html berada di folder /map/, maka mungkin URL-nya jadi "../public/image/map.jpg"
 
-// Ukuran dunia total (tak terbatas tapi dibatasi logika)
-const WORLD_SIZE = 12000;
-let camX = WORLD_SIZE / 2;
-let camY = WORLD_SIZE / 2;
-let scale = 1;
+    let scale = 1;
+    let posX = 0, posY = 0;
+    let dragging = false;
+    let lastX = 0, lastY = 0;
+    let lastDist = 0;
 
-// ===== GENERATOR WARNA =====
-function terrainColor(x, y) {
-  // acak halus berdasarkan posisi
-  const n = Math.sin(x*0.0012 + y*0.0008) * 0.5 + Math.cos(x*0.0005 - y*0.0009);
-  const h = (n + 1) / 2;
-
-  // buat sungai berdasarkan pola
-  const river = Math.abs(Math.sin(y * 0.0004 + Math.cos(x * 0.0003)));
-  if (river < 0.05) {
-    const deep = 150 + (river*100);
-    return `rgb(${deep*0.3},${deep*0.6},${deep})`; // biru air
-  }
-
-  // warna tanah / hutan
-  if (h < 0.45) {
-    const g = 80 + h*100;
-    return `rgb(${g*0.5},${g},${g*0.5})`;
-  }
-  if (h < 0.7) {
-    const g = 60 + h*80;
-    return `rgb(${g*0.4},${g*0.8},${g*0.4})`;
-  }
-
-  // gunung
-  const grey = 100 + h*100;
-  return `rgb(${grey},${grey*0.9},${grey*0.8})`;
-}
-
-// ===== FUNGSI RENDER DINAMIS =====
-function draw() {
-  ctx.setTransform(scale, 0, 0, scale, -camX*scale + canvas.width/2, -camY*scale + canvas.height/2);
-  ctx.clearRect(camX - canvas.width/scale, camY - canvas.height/scale, canvas.width/scale, canvas.height/scale);
-  ctx.save();
-  const tilt = 0.4;
-  ctx.transform(1, -tilt, 0, 1, 0, 0);
-
-  const viewW = canvas.width / scale;
-  const viewH = canvas.height / scale;
-  const startX = Math.floor(camX - viewW/2) - 20;
-  const startY = Math.floor(camY - viewH/2) - 20;
-  const endX = Math.floor(camX + viewW/2) + 20;
-  const endY = Math.floor(camY + viewH/2) + 20;
-
-  const step = 8; // semakin besar = lebih ringan tapi kasar
-  for (let y = startY; y < endY; y += step) {
-    for (let x = startX; x < endX; x += step) {
-      const color = terrainColor(x, y);
-      ctx.fillStyle = color;
-      ctx.fillRect(x, y, step, step);
-    }
-  }
-
-  // efek kabut jauh
-  const grad = ctx.createLinearGradient(0, 0, 0, WORLD_SIZE);
-  grad.addColorStop(0, "rgba(0,0,0,0.4)");
-  grad.addColorStop(1, "rgba(0,0,0,0)");
-  ctx.fillStyle = grad;
-  ctx.fillRect(startX, startY, endX-startX, endY-startY);
-
-  ctx.restore();
-}
-draw();
-
-// ===== GESER (1 JARI / MOUSE) =====
-let dragging=false,lastX,lastY;
-canvas.addEventListener("mousedown", e=>{
-  dragging=true; lastX=e.clientX; lastY=e.clientY; canvas.style.cursor="grabbing";
-});
-window.addEventListener("mouseup", ()=>{dragging=false; canvas.style.cursor="grab";});
-window.addEventListener("mousemove", e=>{
-  if(!dragging) return;
-  camX -= (e.clientX - lastX) / scale;
-  camY -= (e.clientY - lastY) / scale;
-  lastX = e.clientX;
-  lastY = e.clientY;
-  draw();
-});
-
-// ===== PINCH ZOOM (dua jari di HP) =====
-let lastDist=null;
-canvas.addEventListener("touchstart", e=>{
-  if(e.touches.length===2){
-    const dx=e.touches[0].clientX - e.touches[1].clientX;
-    const dy=e.touches[0].clientY - e.touches[1].clientY;
-    lastDist=Math.hypot(dx,dy);
-  }
-  if(e.touches.length===1){
-    lastX=e.touches[0].clientX; lastY=e.touches[0].clientY;
-  }
-});
-canvas.addEventListener("touchmove", e=>{
-  e.preventDefault();
-  if(e.touches.length===1){
-    const dx=e.touches[0].clientX - lastX;
-    const dy=e.touches[0].clientY - lastY;
-    camX -= dx/scale;
-    camY -= dy/scale;
-    lastX=e.touches[0].clientX;
-    lastY=e.touches[0].clientY;
-    draw();
-  }
-  if(e.touches.length===2){
-    const dx=e.touches[0].clientX - e.touches[1].clientX;
-    const dy=e.touches[0].clientY - e.touches[1].clientY;
-    const dist=Math.hypot(dx,dy);
-    if(lastDist){
-      const zoom=dist/lastDist;
-      scale*=zoom;
-      scale=Math.max(0.3,Math.min(scale,5));
+    function resizeCanvas() {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
       draw();
     }
-    lastDist=dist;
-  }
-});
-canvas.addEventListener("touchend",()=>{lastDist=null;});
 
-// ===== RESIZE OTOMATIS =====
-window.addEventListener("resize", ()=>{
-  canvas.width = window.innerWidth;
-  canvas.height = window.innerHeight;
-  draw();
-});
-</script>
+    function draw() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      const w = img.width * scale;
+      const h = img.height * scale;
+      // Gambar dipusatkan + offset posX, posY
+      const x = (canvas.width - w) / 2 + posX;
+      const y = (canvas.height - h) / 2 + posY;
+      ctx.drawImage(img, x, y, w, h);
+    }
+
+    img.onload = () => {
+      resizeCanvas();
+    };
+
+    window.addEventListener('resize', () => {
+      resizeCanvas();
+    });
+
+    // Gesture – pinch zoom
+    canvas.addEventListener('touchstart', e => {
+      if (e.touches.length === 2) {
+        const dx = e.touches[0].clientX - e.touches[1].clientX;
+        const dy = e.touches[0].clientY - e.touches[1].clientY;
+        lastDist = Math.hypot(dx, dy);
+      } else if (e.touches.length === 1) {
+        dragging = true;
+        lastX = e.touches[0].clientX;
+        lastY = e.touches[0].clientY;
+      }
+    });
+
+    canvas.addEventListener('touchmove', e => {
+      e.preventDefault();
+      if (e.touches.length === 1 && dragging) {
+        const dx = e.touches[0].clientX - lastX;
+        const dy = e.touches[0].clientY - lastY;
+        lastX = e.touches[0].clientX;
+        lastY = e.touches[0].clientY;
+        posX += dx;
+        posY += dy;
+        draw();
+      } else if (e.touches.length === 2) {
+        const dx = e.touches[0].clientX - e.touches[1].clientX;
+        const dy = e.touches[0].clientY - e.touches[1].clientY;
+        const dist = Math.hypot(dx, dy);
+        if (lastDist) {
+          const ratio = dist / lastDist;
+          scale *= ratio;
+          scale = Math.max(0.5, Math.min(scale, 3));
+          draw();
+        }
+        lastDist = dist;
+      }
+    });
+
+    canvas.addEventListener('touchend', () => {
+      dragging = false;
+      lastDist = 0;
+    });
+  </script>
 </body>
 </html>
