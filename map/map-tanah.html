@@ -3,18 +3,17 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Peta Dunia - Dengan Sungai Alami</title>
+<title>Peta Dunia - Kamera Miring</title>
 <style>
   html, body {
     margin: 0;
     padding: 0;
     overflow: hidden;
     height: 100%;
-    background: #1b3a24;
+    background: #162d19;
   }
   canvas {
     display: block;
-    background: linear-gradient(180deg, #2f5a33, #1b3a24);
     cursor: grab;
   }
 </style>
@@ -23,116 +22,108 @@
 <canvas id="map"></canvas>
 
 <script>
-// === SETUP DASAR ===
+// ===== SETUP DASAR =====
 const canvas = document.getElementById("map");
 const ctx = canvas.getContext("2d");
 canvas.width = window.innerWidth;
 canvas.height = window.innerHeight;
 
-const mapSize = 12000; // dunia besar
+const mapSize = 12000;
 let camX = mapSize/2 - window.innerWidth/2;
 let camY = mapSize/2 - window.innerHeight/2;
 let scale = 1;
 
-// === FUNGSI PEMBANGKIT SUNGAI + HUTAN ===
+// ===== FUNGSI PEMBANGKIT WARNA =====
 function noise(x, y) {
   return Math.sin(x*0.0012 + Math.cos(y*0.0008)) * 0.5 +
          Math.sin(x*0.0003 - y*0.001) * 0.5;
 }
-
 function generateColor(x, y) {
-  // noise dasar
   const n = noise(x, y);
-  const h = (n + 1) / 2; // ketinggian normalisasi
-
-  // Buat jalur sungai dari fungsi sinus panjang
+  const h = (n + 1) / 2;
   const riverPattern =
     Math.sin(y * 0.00035 + Math.cos(x * 0.00025)) +
     Math.sin((x + 2000) * 0.0002) * 0.6 +
     Math.cos((y - 5000) * 0.0002) * 0.4;
-
-  // nilai absolut mendekati 0 = jalur sungai
   const riverDist = Math.abs(riverPattern);
   const riverStrength = Math.max(0, 0.25 - riverDist);
-
-  // Air sungai
   if (riverStrength > 0.02) {
     const deep = 180 - riverStrength*300;
     return `rgb(${deep*0.3}, ${deep*0.6}, ${deep})`;
   }
-
-  // Danau acak
   const lakeSeed = Math.sin(x*0.0004)*Math.cos(y*0.0004);
-  if (lakeSeed > 0.94) {
-    return `rgb(30,100,160)`;
-  }
-
-  // Hutan, tanah, gunung
+  if (lakeSeed > 0.94) return `rgb(30,100,160)`;
   if (h < 0.4) {
     const g = 60 + h*120;
-    return `rgb(${g*0.5},${g},${g*0.5})`; // padang hijau
+    return `rgb(${g*0.5},${g},${g*0.5})`;
   }
   if (h < 0.7) {
     const g = 70 + h*100;
-    return `rgb(${g*0.4},${g*0.8},${g*0.4})`; // hutan lebih pekat
+    return `rgb(${g*0.4},${g*0.8},${g*0.4})`;
   }
   const grey = 100 + h*100;
-  return `rgb(${grey},${grey*0.9},${grey*0.8})`; // gunung
+  return `rgb(${grey},${grey*0.9},${grey*0.8})`;
 }
 
-// === BUAT GAMBAR PETA ===
+// ===== GENERATE PETA =====
 const offCanvas = document.createElement("canvas");
 offCanvas.width = mapSize;
 offCanvas.height = mapSize;
 const offCtx = offCanvas.getContext("2d");
-
 const img = offCtx.createImageData(mapSize, mapSize);
-for (let y = 0; y < mapSize; y++) {
-  for (let x = 0; x < mapSize; x++) {
+for (let y=0; y<mapSize; y++) {
+  for (let x=0; x<mapSize; x++) {
     const color = generateColor(x, y);
     const [r,g,b] = color.match(/\d+/g).map(Number);
-    const i = (y * mapSize + x) * 4;
-    img.data[i] = r;
-    img.data[i+1] = g;
-    img.data[i+2] = b;
-    img.data[i+3] = 255;
+    const i = (y*mapSize+x)*4;
+    img.data[i]=r; img.data[i+1]=g; img.data[i+2]=b; img.data[i+3]=255;
   }
 }
-offCtx.putImageData(img, 0, 0);
+offCtx.putImageData(img,0,0);
 
-// === RENDER ===
+// ===== DRAW FUNKSI =====
 function draw() {
   ctx.setTransform(scale, 0, 0, scale, -camX*scale, -camY*scale);
   ctx.imageSmoothingEnabled = true;
+
+  // efek kamera miring — sedikit condong ke bawah
+  ctx.save();
+  const tilt = 0.5; // makin besar makin miring
+  ctx.transform(1, -tilt, 0, 1, 0, 0);
   ctx.drawImage(offCanvas, 0, 0);
+
+  // efek bayangan jarak
+  const grad = ctx.createLinearGradient(0, 0, 0, mapSize);
+  grad.addColorStop(0, "rgba(0,0,0,0.4)");
+  grad.addColorStop(0.5, "rgba(0,0,0,0.1)");
+  grad.addColorStop(1, "rgba(0,0,0,0)");
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, mapSize, mapSize);
+  ctx.restore();
 }
 draw();
 
-// === DRAG / GESER ===
-let dragging = false, lastX, lastY;
-canvas.addEventListener("mousedown", e => {
-  dragging = true; lastX = e.clientX; lastY = e.clientY;
-  canvas.style.cursor = "grabbing";
+// ===== DRAG & ZOOM =====
+let dragging=false,lastX,lastY;
+canvas.addEventListener("mousedown",e=>{
+  dragging=true;lastX=e.clientX;lastY=e.clientY;canvas.style.cursor="grabbing";
 });
-window.addEventListener("mouseup", ()=>{dragging=false; canvas.style.cursor="grab";});
-window.addEventListener("mousemove", e=>{
-  if(!dragging) return;
-  camX -= (e.clientX-lastX)/scale;
-  camY -= (e.clientY-lastY)/scale;
-  lastX=e.clientX; lastY=e.clientY;
-  draw();
+window.addEventListener("mouseup",()=>{dragging=false;canvas.style.cursor="grab";});
+window.addEventListener("mousemove",e=>{
+  if(dragging){
+    camX -= (e.clientX-lastX)/scale;
+    camY -= (e.clientY-lastY)/scale;
+    lastX=e.clientX; lastY=e.clientY;
+    draw();
+  }
 });
-
-// === ZOOM ===
-window.addEventListener("wheel", e=>{
+window.addEventListener("wheel",e=>{
   e.preventDefault();
-  const z = 0.1;
-  scale *= e.deltaY<0 ? (1+z):(1-z);
-  scale=Math.max(0.2,Math.min(scale,6));
+  const zoom=0.1;
+  scale*= e.deltaY<0 ? (1+zoom):(1-zoom);
+  scale=Math.max(0.2,Math.min(scale,5));
   draw();
 });
-
-// === RESIZE ===
 window.addEventListener("resize",()=>{
   canvas.width=window.innerWidth;
   canvas.height=window.innerHeight;
