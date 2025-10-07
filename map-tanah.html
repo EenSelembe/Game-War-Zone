@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Peta Tanah Halus</title>
+<style>
+  html, body {
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+    height: 100%;
+    background: #1b3a24;
+  }
+  canvas {
+    display: block;
+    background: linear-gradient(180deg, #2f5a33, #1b3a24);
+    cursor: grab;
+  }
+</style>
+</head>
+<body>
+<canvas id="map"></canvas>
+
+<script>
+const canvas = document.getElementById("map");
+const ctx = canvas.getContext("2d");
+canvas.width = window.innerWidth;
+canvas.height = window.innerHeight;
+
+// Buat tekstur tanah lembut
+const mapSize = 2000;
+const img = ctx.createImageData(mapSize, mapSize);
+for (let i = 0; i < img.data.length; i += 4) {
+  const base = 80 + Math.random() * 10;
+  img.data[i] = base * 0.5;
+  img.data[i+1] = base;
+  img.data[i+2] = base * 0.5;
+  img.data[i+3] = 255;
+}
+const offCanvas = document.createElement("canvas");
+offCanvas.width = mapSize;
+offCanvas.height = mapSize;
+offCanvas.getContext("2d").putImageData(img, 0, 0);
+
+// Variabel kamera
+let camX = 0, camY = 0;
+let scale = 1;
+
+// Render
+function draw() {
+  ctx.setTransform(scale, 0, 0, scale, -camX * scale, -camY * scale);
+  ctx.drawImage(offCanvas, 0, 0);
+}
+draw();
+
+// Drag geser
+let dragging = false, lastX, lastY;
+canvas.addEventListener("mousedown", e => { dragging = true; lastX = e.clientX; lastY = e.clientY; canvas.style.cursor = "grabbing"; });
+window.addEventListener("mouseup", () => { dragging = false; canvas.style.cursor = "grab"; });
+window.addEventListener("mousemove", e => {
+  if (dragging) {
+    camX -= (e.clientX - lastX) / scale;
+    camY -= (e.clientY - lastY) / scale;
+    lastX = e.clientX;
+    lastY = e.clientY;
+    draw();
+  }
+});
+
+// Zoom dikontrol dari luar via postMessage
+window.addEventListener("message", e => {
+  if (e.data.type === "zoom") {
+    scale = Math.max(0.3, Math.min(3, scale * e.data.factor));
+    draw();
+  }
+});
+</script>
+</body>
+</html>
