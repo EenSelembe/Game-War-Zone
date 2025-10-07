@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Peta Dunia Alami - Hutan & Sungai</title>
+<title>Peta Dunia - Dengan Sungai Alami</title>
 <style>
   html, body {
     margin: 0;
@@ -23,111 +23,119 @@
 <canvas id="map"></canvas>
 
 <script>
-// ===== SETUP DASAR =====
+// === SETUP DASAR ===
 const canvas = document.getElementById("map");
 const ctx = canvas.getContext("2d");
 canvas.width = window.innerWidth;
 canvas.height = window.innerHeight;
 
-const mapSize = 12000;   // luas dunia besar
-let camX = mapSize / 2 - window.innerWidth / 2;
-let camY = mapSize / 2 - window.innerHeight / 2;
+const mapSize = 12000; // dunia besar
+let camX = mapSize/2 - window.innerWidth/2;
+let camY = mapSize/2 - window.innerHeight/2;
 let scale = 1;
 
-// ===== GENERATOR WARNA TANAH / HUTAN / AIR =====
-function generateColor(x, y) {
-  // gunakan pola acak halus berdasarkan posisi
-  const nx = x / mapSize - 0.5;
-  const ny = y / mapSize - 0.5;
-  const noise = Math.sin(nx * 40) * Math.cos(ny * 40) +
-                Math.sin(nx * 10) * Math.cos(ny * 10) +
-                Math.random() * 0.2;
-
-  // peta ketinggian
-  const h = (noise + 1) / 2; // 0..1
-
-  // air
-  if (h < 0.38) {
-    const blue = 180 + h * 50;
-    return `rgb(${blue * 0.3}, ${blue * 0.6}, ${blue})`;
-  }
-  // pantai
-  if (h < 0.42) return `rgb(205, 189, 121)`;
-  // hutan
-  if (h < 0.7) {
-    const g = 80 + h * 80;
-    return `rgb(${g * 0.5}, ${g}, ${g * 0.5})`;
-  }
-  // gunung
-  const grey = 80 + h * 100;
-  return `rgb(${grey}, ${grey * 0.95}, ${grey * 0.9})`;
+// === FUNGSI PEMBANGKIT SUNGAI + HUTAN ===
+function noise(x, y) {
+  return Math.sin(x*0.0012 + Math.cos(y*0.0008)) * 0.5 +
+         Math.sin(x*0.0003 - y*0.001) * 0.5;
 }
 
-// ===== BUAT TEKSTUR PETA =====
+function generateColor(x, y) {
+  // noise dasar
+  const n = noise(x, y);
+  const h = (n + 1) / 2; // ketinggian normalisasi
+
+  // Buat jalur sungai dari fungsi sinus panjang
+  const riverPattern =
+    Math.sin(y * 0.00035 + Math.cos(x * 0.00025)) +
+    Math.sin((x + 2000) * 0.0002) * 0.6 +
+    Math.cos((y - 5000) * 0.0002) * 0.4;
+
+  // nilai absolut mendekati 0 = jalur sungai
+  const riverDist = Math.abs(riverPattern);
+  const riverStrength = Math.max(0, 0.25 - riverDist);
+
+  // Air sungai
+  if (riverStrength > 0.02) {
+    const deep = 180 - riverStrength*300;
+    return `rgb(${deep*0.3}, ${deep*0.6}, ${deep})`;
+  }
+
+  // Danau acak
+  const lakeSeed = Math.sin(x*0.0004)*Math.cos(y*0.0004);
+  if (lakeSeed > 0.94) {
+    return `rgb(30,100,160)`;
+  }
+
+  // Hutan, tanah, gunung
+  if (h < 0.4) {
+    const g = 60 + h*120;
+    return `rgb(${g*0.5},${g},${g*0.5})`; // padang hijau
+  }
+  if (h < 0.7) {
+    const g = 70 + h*100;
+    return `rgb(${g*0.4},${g*0.8},${g*0.4})`; // hutan lebih pekat
+  }
+  const grey = 100 + h*100;
+  return `rgb(${grey},${grey*0.9},${grey*0.8})`; // gunung
+}
+
+// === BUAT GAMBAR PETA ===
 const offCanvas = document.createElement("canvas");
 offCanvas.width = mapSize;
 offCanvas.height = mapSize;
 const offCtx = offCanvas.getContext("2d");
-offCtx.imageSmoothingEnabled = true;
 
 const img = offCtx.createImageData(mapSize, mapSize);
 for (let y = 0; y < mapSize; y++) {
   for (let x = 0; x < mapSize; x++) {
     const color = generateColor(x, y);
-    const [r, g, b] = color.match(/\d+/g).map(Number);
-    const index = (y * mapSize + x) * 4;
-    img.data[index] = r;
-    img.data[index + 1] = g;
-    img.data[index + 2] = b;
-    img.data[index + 3] = 255;
+    const [r,g,b] = color.match(/\d+/g).map(Number);
+    const i = (y * mapSize + x) * 4;
+    img.data[i] = r;
+    img.data[i+1] = g;
+    img.data[i+2] = b;
+    img.data[i+3] = 255;
   }
 }
 offCtx.putImageData(img, 0, 0);
 
-// ===== RENDER PETA =====
+// === RENDER ===
 function draw() {
-  ctx.setTransform(scale, 0, 0, scale, -camX * scale, -camY * scale);
+  ctx.setTransform(scale, 0, 0, scale, -camX*scale, -camY*scale);
   ctx.imageSmoothingEnabled = true;
   ctx.drawImage(offCanvas, 0, 0);
 }
 draw();
 
-// ===== GESER (DRAG) =====
+// === DRAG / GESER ===
 let dragging = false, lastX, lastY;
 canvas.addEventListener("mousedown", e => {
-  dragging = true;
-  lastX = e.clientX;
-  lastY = e.clientY;
+  dragging = true; lastX = e.clientX; lastY = e.clientY;
   canvas.style.cursor = "grabbing";
 });
-window.addEventListener("mouseup", () => {
-  dragging = false;
-  canvas.style.cursor = "grab";
-});
-window.addEventListener("mousemove", e => {
-  if (dragging) {
-    camX -= (e.clientX - lastX) / scale;
-    camY -= (e.clientY - lastY) / scale;
-    lastX = e.clientX;
-    lastY = e.clientY;
-    draw();
-  }
-});
-
-// ===== ZOOM =====
-window.addEventListener("wheel", e => {
-  e.preventDefault();
-  const zoomIntensity = 0.1;
-  const oldScale = scale;
-  scale *= e.deltaY < 0 ? (1 + zoomIntensity) : (1 - zoomIntensity);
-  scale = Math.max(0.2, Math.min(scale, 6));
+window.addEventListener("mouseup", ()=>{dragging=false; canvas.style.cursor="grab";});
+window.addEventListener("mousemove", e=>{
+  if(!dragging) return;
+  camX -= (e.clientX-lastX)/scale;
+  camY -= (e.clientY-lastY)/scale;
+  lastX=e.clientX; lastY=e.clientY;
   draw();
 });
 
-// ===== RESIZE =====
-window.addEventListener("resize", () => {
-  canvas.width = window.innerWidth;
-  canvas.height = window.innerHeight;
+// === ZOOM ===
+window.addEventListener("wheel", e=>{
+  e.preventDefault();
+  const z = 0.1;
+  scale *= e.deltaY<0 ? (1+z):(1-z);
+  scale=Math.max(0.2,Math.min(scale,6));
+  draw();
+});
+
+// === RESIZE ===
+window.addEventListener("resize",()=>{
+  canvas.width=window.innerWidth;
+  canvas.height=window.innerHeight;
   draw();
 });
 </script>
