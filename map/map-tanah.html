@@ -47,17 +47,7 @@
     const ctx = canvas.getContext('2d');
     const btn = document.getElementById('startBtn');
 
-    const img = new Image();
-    img.src = "https://raw.githubusercontent.com/EenSelembe/Game-War-Zone/main/public/image/map.jpg";
-
-    let scale = 1;
-    let posX = 0, posY = 0;
-    let dragging = false;
-    let lastX = 0, lastY = 0;
-    let lastDist = 0;
-    let imgW = 0, imgH = 0;
-
-    // ========== FULLSCREEN ==========
+    // ===== FULLSCREEN =====
     btn.addEventListener('click', () => {
       if (document.documentElement.requestFullscreen) {
         document.documentElement.requestFullscreen();
@@ -68,21 +58,22 @@
       setTimeout(() => btn.style.display = 'none', 400);
     });
 
+    // ===== MAP IMAGE =====
+    const img = new Image();
+    img.src = "https://raw.githubusercontent.com/EenSelembe/Game-War-Zone/main/public/image/map.jpg";
+
+    let scale = 1;
+    let posX = 0, posY = 0;
+    let dragging = false;
+    let lastX = 0, lastY = 0;
+    let lastDist = 0;
+    let imgW = 0, imgH = 0;
+
     function resizeCanvas() {
       canvas.width = window.innerWidth;
       canvas.height = window.innerHeight;
       constrainPosition();
       draw();
-    }
-
-    function draw() {
-      if (!img.complete) return;
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      const w = imgW * scale;
-      const h = imgH * scale;
-      const x = (canvas.width - w) / 2 + posX;
-      const y = (canvas.height - h) / 2 + posY;
-      ctx.drawImage(img, x, y, w, h);
     }
 
     function constrainPosition() {
@@ -94,15 +85,54 @@
       posY = Math.min(maxY, Math.max(posY, -maxY));
     }
 
+    // ===== DRAW MAP + BUILDINGS =====
+    const buildingPositions = [
+      { name: 'castile', x: 0,    y: 0,   size: 150 },
+      { name: 'army',    x: -200, y: 140, size: 100 },
+      { name: 'civil',   x: 180,  y: 120, size: 90 },
+      { name: 'stroge',  x: 0,    y: 220, size: 80 },
+    ];
+
+    const buildings = [];
+
+    function loadBuildings() {
+      const type = localStorage.getItem('castleType') || 'human';
+      for (const b of buildingPositions) {
+        const imgB = new Image();
+        imgB.src = `https://raw.githubusercontent.com/EenSelembe/Game-War-Zone/main/public/image/${b.name}-${type}.png`;
+        buildings.push({ img: imgB, ...b });
+      }
+    }
+
+    function draw() {
+      if (!img.complete) return;
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      const w = imgW * scale;
+      const h = imgH * scale;
+      const x = (canvas.width - w) / 2 + posX;
+      const y = (canvas.height - h) / 2 + posY;
+      ctx.drawImage(img, x, y, w, h);
+
+      // gambar semua bangunan
+      for (const b of buildings) {
+        if (!b.img.complete) continue;
+        const bx = canvas.width / 2 + b.x * scale - b.size / 2;
+        const by = canvas.height / 2 + b.y * scale - b.size / 2;
+        const s = b.size * scale;
+        ctx.drawImage(b.img, bx, by, s, s);
+      }
+    }
+
     img.onload = () => {
       imgW = img.width;
       imgH = img.height;
+      loadBuildings();
       resizeCanvas();
     };
 
     window.addEventListener('resize', resizeCanvas);
 
-    // ======== Gesture sentuh ========
+    // ===== GESTURE: geser & pinch zoom =====
     canvas.addEventListener('touchstart', e => {
       if (e.touches.length === 2) {
         const dx = e.touches[0].clientX - e.touches[1].clientX;
@@ -149,13 +179,9 @@
       lastDist = 0;
     });
 
-    // ======== Dukungan mouse (PC) ========
+    // Mouse support (PC)
     let isMouseDown = false;
-    canvas.addEventListener('mousedown', e => {
-      isMouseDown = true;
-      lastX = e.clientX;
-      lastY = e.clientY;
-    });
+    canvas.addEventListener('mousedown', e => { isMouseDown = true; lastX = e.clientX; lastY = e.clientY; });
     window.addEventListener('mouseup', () => isMouseDown = false);
     window.addEventListener('mousemove', e => {
       if (!isMouseDown) return;
@@ -169,7 +195,7 @@
       draw();
     });
 
-    // ======== Scroll zoom (PC) ========
+    // Scroll zoom (PC)
     window.addEventListener('wheel', e => {
       const oldScale = scale;
       const delta = e.deltaY < 0 ? 1.1 : 0.9;
