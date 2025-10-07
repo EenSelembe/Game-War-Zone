@@ -69,6 +69,15 @@
     let lastDist = 0;
     let imgW = 0, imgH = 0;
 
+    // CASTILE (bangunan utama)
+    const castle = new Image();
+    const type = localStorage.getItem('castleType') || 'human';
+    castle.src = `https://raw.githubusercontent.com/EenSelembe/Game-War-Zone/main/public/image/castile-${type}.png`;
+
+    // posisi kastil relatif terhadap map (bukan layar)
+    // (0,0) = tengah map, makin positif ke kanan/bawah
+    const castlePos = { x: 0, y: 150, size: 150 };
+
     function resizeCanvas() {
       canvas.width = window.innerWidth;
       canvas.height = window.innerHeight;
@@ -85,48 +94,30 @@
       posY = Math.min(maxY, Math.max(posY, -maxY));
     }
 
-    // ===== DRAW MAP + BUILDINGS =====
-    const buildingPositions = [
-      { name: 'castile', x: 0,    y: 0,   size: 150 },
-      { name: 'army',    x: -200, y: 140, size: 100 },
-      { name: 'civil',   x: 180,  y: 120, size: 90 },
-      { name: 'stroge',  x: 0,    y: 220, size: 80 },
-    ];
-
-    const buildings = [];
-
-    function loadBuildings() {
-      const type = localStorage.getItem('castleType') || 'human';
-      for (const b of buildingPositions) {
-        const imgB = new Image();
-        imgB.src = `https://raw.githubusercontent.com/EenSelembe/Game-War-Zone/main/public/image/${b.name}-${type}.png`;
-        buildings.push({ img: imgB, ...b });
-      }
-    }
-
     function draw() {
       if (!img.complete) return;
       ctx.clearRect(0, 0, canvas.width, canvas.height);
+
       const w = imgW * scale;
       const h = imgH * scale;
-      const x = (canvas.width - w) / 2 + posX;
-      const y = (canvas.height - h) / 2 + posY;
-      ctx.drawImage(img, x, y, w, h);
+      const mapX = (canvas.width - w) / 2 + posX;
+      const mapY = (canvas.height - h) / 2 + posY;
 
-      // gambar semua bangunan
-      for (const b of buildings) {
-        if (!b.img.complete) continue;
-        const bx = canvas.width / 2 + b.x * scale - b.size / 2;
-        const by = canvas.height / 2 + b.y * scale - b.size / 2;
-        const s = b.size * scale;
-        ctx.drawImage(b.img, bx, by, s, s);
+      // gambar map
+      ctx.drawImage(img, mapX, mapY, w, h);
+
+      // gambar kastil (dihitung relatif ke map)
+      if (castle.complete) {
+        const cx = canvas.width / 2 + castlePos.x * scale - castlePos.size / 2;
+        const cy = canvas.height / 2 + castlePos.y * scale - castlePos.size / 2;
+        const s = castlePos.size * scale;
+        ctx.drawImage(castle, cx, cy, s, s);
       }
     }
 
     img.onload = () => {
       imgW = img.width;
       imgH = img.height;
-      loadBuildings();
       resizeCanvas();
     };
 
@@ -195,7 +186,7 @@
       draw();
     });
 
-    // Scroll zoom (PC)
+    // Scroll zoom (untuk PC)
     window.addEventListener('wheel', e => {
       const oldScale = scale;
       const delta = e.deltaY < 0 ? 1.1 : 0.9;
