@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Peta Tanah Halus</title>
+<style>
+  html, body {
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+    height: 100%;
+    background: #1b3a24;
+  }
+  canvas {
+    display: block;
+    background: linear-gradient(180deg, #2f5a33, #1b3a24);
+    cursor: grab;
+  }
+</style>
+</head>
+<body>
+<canvas id="map"></canvas>
+
+<script>
+const canvas = document.getElementById("map");
+const ctx = canvas.getContext("2d");
+let width = window.innerWidth;
+let height = window.innerHeight;
+canvas.width = width;
+canvas.height = height;
+
+// === Buat tekstur tanah halus ===
+const mapSize = 2000; // luas peta (piksel)
+const img = ctx.createImageData(mapSize, mapSize);
+for (let i = 0; i < img.data.length; i += 4) {
+  // warna hijau lembut acak agar terlihat alami
+  const base = 80 + Math.random() * 10; // variasi brightness
+  img.data[i] = base * 0.5;    // R
+  img.data[i+1] = base;        // G
+  img.data[i+2] = base * 0.5;  // B
+  img.data[i+3] = 255;         // Alpha
+}
+const offCanvas = document.createElement("canvas");
+offCanvas.width = mapSize;
+offCanvas.height = mapSize;
+offCanvas.getContext("2d").putImageData(img, 0, 0);
+
+// === Variabel kamera ===
+let camX = 0, camY = 0, scale = 1;
+let isDragging = false, lastX, lastY;
+
+// === Render peta ===
+function draw() {
+  ctx.setTransform(scale, 0, 0, scale, -camX * scale, -camY * scale);
+  ctx.drawImage(offCanvas, 0, 0);
+}
+draw();
+
+// === Zoom dengan scroll ===
+window.addEventListener("wheel", e => {
+  e.preventDefault();
+  const zoomIntensity = 0.1;
+  scale *= e.deltaY < 0 ? (1 + zoomIntensity) : (1 - zoomIntensity);
+  scale = Math.max(0.3, Math.min(scale, 3));
+  draw();
+});
+
+// === Geser peta dengan drag ===
+canvas.addEventListener("mousedown", e => {
+  isDragging = true;
+  lastX = e.clientX;
+  lastY = e.clientY;
+  canvas.style.cursor = "grabbing";
+});
+window.addEventListener("mouseup", () => {
+  isDragging = false;
+  canvas.style.cursor = "grab";
+});
+window.addEventListener("mousemove", e => {
+  if (isDragging) {
+    camX -= (e.clientX - lastX) / scale;
+    camY -= (e.clientY - lastY) / scale;
+    lastX = e.clientX;
+    lastY = e.clientY;
+    draw();
+  }
+});
+
+// === Resize otomatis ===
+window.addEventListener("resize", () => {
+  width = window.innerWidth;
+  height = window.innerHeight;
+  canvas.width = width;
+  canvas.height = height;
+  draw();
+});
+</script>
+</body>
+</html>
