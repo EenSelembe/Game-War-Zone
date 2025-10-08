@@ -46,6 +46,28 @@
     margin:4px;
     cursor:pointer;
   }
+
+  /* Tombol ceklis dan silang */
+  #confirmButtons {
+    position:absolute;
+    bottom:80px;
+    left:50%;
+    transform:translateX(-50%);
+    display:none;
+    z-index:30;
+    gap:20px;
+  }
+  #confirmButtons button {
+    font-size:26px;
+    font-weight:bold;
+    padding:10px 20px;
+    border:none;
+    border-radius:12px;
+    cursor:pointer;
+    box-shadow:0 0 10px #000;
+  }
+  #btnYes { background:lime; color:#000; }
+  #btnNo { background:red; color:#fff; }
 </style>
 </head>
 <body>
@@ -66,6 +88,12 @@
   <button onclick="pilihBangunan('Tempat Latihan')">⚔️ Tempat Latihan</button>
 </div>
 
+<!-- tombol ceklis dan silang -->
+<div id="confirmButtons">
+  <button id="btnYes">✔️</button>
+  <button id="btnNo">✖️</button>
+</div>
+
 <script>
 const canvas=document.getElementById('mapCanvas');
 const ctx=canvas.getContext('2d');
@@ -74,6 +102,9 @@ const menu=document.getElementById('menu');
 const menuTitle=document.getElementById('menuTitle');
 const buildMenu=document.getElementById('buildMenu');
 const btnBangun=document.getElementById('btnBangun');
+const confirmBox=document.getElementById('confirmButtons');
+const btnYes=document.getElementById('btnYes');
+const btnNo=document.getElementById('btnNo');
 
 const mapImg=new Image();
 mapImg.src="https://raw.githubusercontent.com/EenSelembe/Game-War-Zone/main/public/image/map.jpg";
@@ -88,7 +119,7 @@ let cameraX, cameraY;
 let dragging=false,lastX=0,lastY=0,lastDist=0;
 
 let mode="normal"; // normal | placing
-let ghostBuilding=null; // bayangan bangunan
+let ghostBuilding=null;
 
 const buildings=[
   {name:'Kastil Utama',x:0,y:0,size:300,img:castleImg}
@@ -100,20 +131,13 @@ function resize(){
   draw();
 }
 function worldToScreen(wx,wy){
-  return{
-    x:(wx-cameraX)*scale+canvas.width/2,
-    y:(wy-cameraY)*scale+canvas.height/2
-  };
+  return{x:(wx-cameraX)*scale+canvas.width/2,y:(wy-cameraY)*scale+canvas.height/2};
 }
 function screenToWorld(sx,sy){
-  return{
-    x:(sx-canvas.width/2)/scale+cameraX,
-    y:(sy-canvas.height/2)/scale+cameraY
-  };
+  return{x:(sx-canvas.width/2)/scale+cameraX,y:(sy-canvas.height/2)/scale+cameraY};
 }
 function clampCamera(){
-  const halfW=(canvas.width/2)/scale;
-  const halfH=(canvas.height/2)/scale;
+  const halfW=(canvas.width/2)/scale,halfH=(canvas.height/2)/scale;
   const minX=halfW,maxX=world.width-halfW,minY=halfH,maxY=world.height-halfH;
   cameraX=Math.min(Math.max(cameraX,minX),maxX);
   cameraY=Math.min(Math.max(cameraY,minY),maxY);
@@ -122,11 +146,9 @@ function draw(){
   if(!mapImg.complete)return;
   ctx.clearRect(0,0,canvas.width,canvas.height);
   clampCamera();
-
   const mapScreen=worldToScreen(world.width/2,world.height/2);
   const mapDrawW=world.width*scale,mapDrawH=world.height*scale;
   ctx.drawImage(mapImg,mapScreen.x-mapDrawW/2,mapScreen.y-mapDrawH/2,mapDrawW,mapDrawH);
-
   // gambar semua bangunan
   for(const b of buildings){
     if(b.img.complete){
@@ -135,13 +157,12 @@ function draw(){
       ctx.drawImage(b.img,p.x-s/2,p.y-s/2,s,s);
     }
   }
-
-  // gambar bayangan bangunan (ghost)
+  // gambar bayangan
   if(ghostBuilding){
     const s=ghostBuilding.size*scale;
     const p=worldToScreen(ghostBuilding.x,ghostBuilding.y);
-    ctx.globalAlpha=0.5;
-    ctx.fillStyle="rgba(0,255,0,0.3)";
+    ctx.globalAlpha=0.6;
+    ctx.fillStyle="lime";
     ctx.beginPath();
     ctx.arc(p.x,p.y,s/2,0,Math.PI*2);
     ctx.fill();
@@ -163,25 +184,10 @@ function checkClick(e){
   const w=screenToWorld(x,y);
 
   if(mode==="placing"){
-    // cek apakah posisi valid
-    let overlap=false;
-    for(const b of buildings){
-      const dx=w.x-b.x, dy=w.y-b.y;
-      if(Math.hypot(dx,dy)<(b.size/2+ghostBuilding.size/2)){
-        overlap=true;
-        break;
-      }
-    }
-    if(!overlap){
-      // bangun
-      buildings.push({...ghostBuilding});
-      ghostBuilding=null;
-      mode="normal";
-      draw();
-      alert("Bangunan berhasil dibangun!");
-    }else{
-      alert("Terlalu dekat dengan bangunan lain!");
-    }
+    // geser posisi bayangan ke posisi tap
+    ghostBuilding.x=w.x;
+    ghostBuilding.y=w.y;
+    draw();
     return;
   }
 
@@ -196,7 +202,6 @@ function checkClick(e){
   buildMenu.style.display='none';
 }
 
-// === MODE BANGUN ===
 btnBangun.onclick=function(){
   menu.style.display='none';
   buildMenu.style.display='block';
@@ -207,6 +212,7 @@ btnBangun.onclick=function(){
 function pilihBangunan(nama){
   buildMenu.style.display='none';
   mode="placing";
+  confirmBox.style.display='flex';
   ghostBuilding={
     name:nama,
     x:cameraX,
@@ -214,16 +220,47 @@ function pilihBangunan(nama){
     size:200,
     img:null
   };
-  alert("Geser peta dan sentuh untuk menempatkan: "+nama);
+  draw();
+  alert("Geser peta lalu sentuh posisi bangunan, lalu tekan ✔️ untuk membangun atau ✖️ untuk batal.");
 }
 
-// === kontrol peta ===
+btnYes.onclick=function(){
+  if(!ghostBuilding)return;
+  // cek jarak dengan bangunan lain
+  let overlap=false;
+  for(const b of buildings){
+    const dx=b.x-ghostBuilding.x,dy=b.y-ghostBuilding.y;
+    if(Math.hypot(dx,dy)<(b.size/2+ghostBuilding.size/2)){
+      overlap=true;break;
+    }
+  }
+  if(overlap){alert("Terlalu dekat dengan bangunan lain!");return;}
+  // buat bangunan baru
+  const newB={...ghostBuilding};
+  // gunakan ikon sesuai jenis
+  newB.img=new Image();
+  if(newB.name.includes('Rumah')) newB.img.src='https://cdn-icons-png.flaticon.com/512/235/235889.png';
+  else if(newB.name.includes('Gudang')) newB.img.src='https://cdn-icons-png.flaticon.com/512/3135/3135703.png';
+  else newB.img.src='https://cdn-icons-png.flaticon.com/512/646/646674.png';
+  buildings.push(newB);
+  ghostBuilding=null;
+  mode="normal";
+  confirmBox.style.display='none';
+  draw();
+  alert("Bangunan berhasil dibangun!");
+};
+
+btnNo.onclick=function(){
+  ghostBuilding=null;
+  mode="normal";
+  confirmBox.style.display='none';
+  draw();
+};
+
 canvas.addEventListener('touchstart',e=>{
   if(e.touches.length===1){
     checkClick(e);
-    dragging=true;
-    lastX=e.touches[0].clientX;
-    lastY=e.touches[0].clientY;
+    dragging=true;lastX=e.touches[0].clientX;lastY=e.touches[0].clientY;
   }else if(e.touches.length===2){
     const dx=e.touches[0].clientX-e.touches[1].clientX;
     const dy=e.touches[0].clientY-e.touches[1].clientY;
@@ -236,8 +273,7 @@ canvas.addEventListener('touchmove',e=>{
     const dx=(e.touches[0].clientX-lastX)/scale;
     const dy=(e.touches[0].clientY-lastY)/scale;
     cameraX-=dx;cameraY-=dy;
-    lastX=e.touches[0].clientX;
-    lastY=e.touches[0].clientY;
+    lastX=e.touches[0].clientX;lastY=e.touches[0].clientY;
     draw();
   }else if(e.touches.length===2){
     const dx=e.touches[0].clientX-e.touches[1].clientX;
@@ -258,26 +294,21 @@ let isMouseDown=false;
 canvas.addEventListener('mousedown',e=>{
   checkClick(e);
   isMouseDown=true;
-  lastX=e.clientX;
-  lastY=e.clientY;
+  lastX=e.clientX;lastY=e.clientY;
 });
 window.addEventListener('mouseup',()=>isMouseDown=false);
 window.addEventListener('mousemove',e=>{
   if(!isMouseDown)return;
-  const dx=(e.clientX-lastX)/scale;
-  const dy=(e.clientY-lastY)/scale;
+  const dx=(e.clientX-lastX)/scale,dy=(e.clientY-lastY)/scale;
   cameraX-=dx;cameraY-=dy;
-  lastX=e.clientX;
-  lastY=e.clientY;
+  lastX=e.clientX;lastY=e.clientY;
   draw();
 });
 window.addEventListener('wheel',e=>{
   const zoom=e.deltaY<0?1.1:0.9;
-  scale*=zoom;
-  scale=Math.max(0.4,Math.min(scale,2.5));
+  scale*=zoom;scale=Math.max(0.4,Math.min(scale,2.5));
   draw();
 });
-
 window.addEventListener('resize',resize);
 
 mapImg.onload=()=>{
