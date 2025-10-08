@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-  <title>Map Padang Pasir</title>
+  <title>Map Padang Pasir - Vertikal</title>
   <style>
     html, body {
       margin: 0;
@@ -54,21 +54,21 @@
     const castleImg = new Image();
     castleImg.src = `https://raw.githubusercontent.com/EenSelembe/Game-War-Zone/main/public/image/castile-${type}.png`;
 
-    // ===== Ukuran dunia peta (fiktif) =====
+    // ===== Ukuran dunia peta (memanjang ke atas) =====
     const world = {
-      width: 3000,
-      height: 2000
+      width: 1600,   // tidak terlalu lebar
+      height: 4000   // tinggi memanjang ke atas
     };
 
-    // ===== Posisi awal kamera (tengah map) =====
-    let scale = 0.5;                     // tampilan awal lebih jauh (0.3 = sangat jauh, 1 = normal)
-    let cameraX = world.width / 2;       // posisi kamera di tengah map
-    let cameraY = world.height / 2;      // posisi kamera di tengah map
+    // ===== Posisi awal kamera (tengah bawah) =====
+    let scale = 0.5;
+    let cameraX = world.width / 2;        // posisi tengah secara horizontal
+    let cameraY = world.height - 800;     // mulai dari bawah map
 
-    // ===== Kastil utama =====
+    // ===== Kastil utama di bagian bawah tengah =====
     const castle = {
       x: world.width / 2,
-      y: world.height / 2 + 200, // sedikit ke bawah tengah
+      y: world.height - 300,  // sedikit ke atas dari bawah
       size: 180
     };
 
@@ -84,7 +84,6 @@
     }
 
     function worldToScreen(wx, wy) {
-      // ubah posisi dunia jadi posisi layar berdasarkan kamera
       return {
         x: (wx - cameraX) * scale + canvas.width / 2,
         y: (wy - cameraY) * scale + canvas.height / 2
@@ -95,7 +94,7 @@
       if (!mapImg.complete) return;
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-      // Gambar map
+      // Gambar map vertikal
       const mapScreen = worldToScreen(world.width / 2, world.height / 2);
       const mapDrawW = world.width * scale;
       const mapDrawH = world.height * scale;
@@ -109,7 +108,7 @@
       }
     }
 
-    // ===== Event Touch =====
+    // ===== Gerakan sentuh (utamanya naik-turun) =====
     canvas.addEventListener('touchstart', e => {
       if (e.touches.length === 2) {
         const dx = e.touches[0].clientX - e.touches[1].clientX;
@@ -127,8 +126,8 @@
       if (e.touches.length === 1 && dragging) {
         const dx = (e.touches[0].clientX - lastX) / scale;
         const dy = (e.touches[0].clientY - lastY) / scale;
-        cameraX -= dx;
-        cameraY -= dy;
+        cameraX -= dx;    // bisa geser sedikit ke samping
+        cameraY -= dy;    // geser ke atas/bawah
         lastX = e.touches[0].clientX;
         lastY = e.touches[0].clientY;
         draw();
@@ -151,7 +150,7 @@
       lastDist = 0;
     });
 
-    // ===== Event Mouse (PC) =====
+    // ===== Mouse support =====
     let isMouseDown = false;
     canvas.addEventListener('mousedown', e => {
       isMouseDown = true;
