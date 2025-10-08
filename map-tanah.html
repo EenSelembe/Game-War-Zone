@@ -47,6 +47,7 @@
     const ctx = canvas.getContext('2d');
     const btn = document.getElementById('startBtn');
 
+    // ===== Gambar map dan bangunan =====
     const mapImg = new Image();
     mapImg.src = "https://raw.githubusercontent.com/EenSelembe/Game-War-Zone/main/public/image/map.jpg";
 
@@ -56,27 +57,27 @@
 
     // ===== Ukuran dunia peta (memanjang ke atas) =====
     const world = {
-      width: 1600,  // tidak terlalu lebar
-      height: 4000  // tinggi ke atas
+      width: 1600,
+      height: 4000
     };
 
-    // ===== Posisi awal kamera (tengah bawah) =====
+    // ===== Kamera dan skala =====
     let scale = 0.5;
     let cameraX = world.width / 2;
     let cameraY = world.height - 800;
 
-    // ===== Kastil utama di bawah tengah =====
+    // ===== Bangunan utama (lebih besar) =====
     const castle = {
       x: world.width / 2,
       y: world.height - 300,
-      size: 180
+      size: 300 // 💥 sebelumnya 180, sekarang 300 biar besar
     };
 
     let dragging = false;
     let lastX = 0, lastY = 0;
     let lastDist = 0;
 
-    // ======== Helper Function ========
+    // ===== Fungsi bantu =====
     function resize() {
       canvas.width = window.innerWidth;
       canvas.height = window.innerHeight;
@@ -90,7 +91,6 @@
       };
     }
 
-    // === Batasi pergerakan kamera agar map tidak keluar layar ===
     function clampCamera() {
       const halfW = (canvas.width / 2) / scale;
       const halfH = (canvas.height / 2) / scale;
@@ -166,7 +166,7 @@
       lastDist = 0;
     });
 
-    // Mouse support (PC)
+    // ===== Mouse support =====
     let isMouseDown = false;
     canvas.addEventListener('mousedown', e => {
       isMouseDown = true;
@@ -185,7 +185,7 @@
       draw();
     });
 
-    // Zoom via mouse
+    // ===== Zoom via mouse =====
     window.addEventListener('wheel', e => {
       const zoom = e.deltaY < 0 ? 1.1 : 0.9;
       scale *= zoom;
@@ -201,7 +201,7 @@
     };
     castleImg.onload = draw;
 
-    // Tombol Fullscreen
+    // ===== Tombol Fullscreen =====
     btn.addEventListener('click', () => {
       if (document.documentElement.requestFullscreen) {
         document.documentElement.requestFullscreen();
