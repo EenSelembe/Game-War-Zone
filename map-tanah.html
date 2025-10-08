@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-  <title>Map Padang Pasir - Vertikal</title>
+  <title>Map Padang Pasir - Proporsional</title>
   <style>
     html, body {
       margin: 0;
@@ -47,7 +47,6 @@
     const ctx = canvas.getContext('2d');
     const btn = document.getElementById('startBtn');
 
-    // ===== Gambar map dan bangunan =====
     const mapImg = new Image();
     mapImg.src = "https://raw.githubusercontent.com/EenSelembe/Game-War-Zone/main/public/image/map.jpg";
 
@@ -55,23 +54,13 @@
     const castleImg = new Image();
     castleImg.src = `https://raw.githubusercontent.com/EenSelembe/Game-War-Zone/main/public/image/castile-${type}.png`;
 
-    // ===== Ukuran dunia peta (memanjang ke atas) =====
-    const world = {
-      width: 1600,
-      height: 4000
-    };
+    // nilai default sebelum gambar map dimuat
+    let world = { width: 1600, height: 4000 };
 
-    // ===== Kamera dan skala =====
     let scale = 0.5;
-    let cameraX = world.width / 2;
-    let cameraY = world.height - 800;
+    let cameraX, cameraY;
 
-    // ===== Bangunan utama (lebih besar) =====
-    const castle = {
-      x: world.width / 2,
-      y: world.height - 300,
-      size: 300 // 💥 sebelumnya 180, sekarang 300 biar besar
-    };
+    const castle = { x: 0, y: 0, size: 300 };
 
     let dragging = false;
     let lastX = 0, lastY = 0;
@@ -94,12 +83,10 @@
     function clampCamera() {
       const halfW = (canvas.width / 2) / scale;
       const halfH = (canvas.height / 2) / scale;
-
       const minX = halfW;
       const maxX = world.width - halfW;
       const minY = halfH;
       const maxY = world.height - halfH;
-
       cameraX = Math.min(Math.max(cameraX, minX), maxX);
       cameraY = Math.min(Math.max(cameraY, minY), maxY);
     }
@@ -116,7 +103,6 @@
 
       ctx.drawImage(mapImg, mapScreen.x - mapDrawW / 2, mapScreen.y - mapDrawH / 2, mapDrawW, mapDrawH);
 
-      // Gambar kastil
       if (castleImg.complete) {
         const s = castle.size * scale;
         const cScreen = worldToScreen(castle.x, castle.y);
@@ -124,20 +110,8 @@
       }
     }
 
-    // ===== Geser dan Zoom =====
-    canvas.addEventListener('touchstart', e => {
-      if (e.touches.length === 2) {
-        const dx = e.touches[0].clientX - e.touches[1].clientX;
-        const dy = e.touches[0].clientY - e.touches[1].clientY;
-        lastDist = Math.hypot(dx, dy);
-      } else if (e.touches.length === 1) {
-        dragging = true;
-        lastX = e.touches[0].clientX;
-        lastY = e.touches[0].clientY;
-      }
-    });
-
-    canvas.addEventListener('touchmove', e => {
+    // === GESTURE HANDLER ===
+    function handleTouchMove(e) {
       e.preventDefault();
       if (e.touches.length === 1 && dragging) {
         const dx = (e.touches[0].clientX - lastX) / scale;
@@ -159,20 +133,25 @@
         }
         lastDist = dist;
       }
-    });
+    }
 
-    canvas.addEventListener('touchend', () => {
-      dragging = false;
-      lastDist = 0;
+    // === EVENT ===
+    canvas.addEventListener('touchstart', e => {
+      if (e.touches.length === 2) {
+        const dx = e.touches[0].clientX - e.touches[1].clientX;
+        const dy = e.touches[0].clientY - e.touches[1].clientY;
+        lastDist = Math.hypot(dx, dy);
+      } else if (e.touches.length === 1) {
+        dragging = true;
+        lastX = e.touches[0].clientX;
+        lastY = e.touches[0].clientY;
+      }
     });
+    canvas.addEventListener('touchmove', handleTouchMove);
+    canvas.addEventListener('touchend', () => { dragging = false; lastDist = 0; });
 
-    // ===== Mouse support =====
     let isMouseDown = false;
-    canvas.addEventListener('mousedown', e => {
-      isMouseDown = true;
-      lastX = e.clientX;
-      lastY = e.clientY;
-    });
+    canvas.addEventListener('mousedown', e => { isMouseDown = true; lastX = e.clientX; lastY = e.clientY; });
     window.addEventListener('mouseup', () => isMouseDown = false);
     window.addEventListener('mousemove', e => {
       if (!isMouseDown) return;
@@ -185,7 +164,6 @@
       draw();
     });
 
-    // ===== Zoom via mouse =====
     window.addEventListener('wheel', e => {
       const zoom = e.deltaY < 0 ? 1.1 : 0.9;
       scale *= zoom;
@@ -195,13 +173,28 @@
 
     window.addEventListener('resize', resize);
 
+    // === Ketika gambar map sudah dimuat ===
     mapImg.onload = () => {
+      // Hitung rasio asli gambar
+      const ratio = mapImg.width / mapImg.height;
+
+      // Tetapkan ukuran dunia berdasarkan tinggi vertikal, jaga proporsinya
+      world.height = 4000;
+      world.width = world.height * ratio;
+
+      // Posisi kastil dan kamera
+      castle.x = world.width / 2;
+      castle.y = world.height - 300;
+
+      cameraX = world.width / 2;
+      cameraY = world.height - 800;
+
       resize();
       draw();
     };
     castleImg.onload = draw;
 
-    // ===== Tombol Fullscreen =====
+    // === Tombol Fullscreen ===
     btn.addEventListener('click', () => {
       if (document.documentElement.requestFullscreen) {
         document.documentElement.requestFullscreen();
