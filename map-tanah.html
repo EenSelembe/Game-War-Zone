@@ -47,12 +47,6 @@
     const ctx = canvas.getContext('2d');
     const btn = document.getElementById('startBtn');
 
-    let scale = 1;
-    let cameraX = 0, cameraY = 0;
-    let dragging = false;
-    let lastX = 0, lastY = 0;
-    let lastDist = 0;
-
     const mapImg = new Image();
     mapImg.src = "https://raw.githubusercontent.com/EenSelembe/Game-War-Zone/main/public/image/map.jpg";
 
@@ -60,18 +54,29 @@
     const castleImg = new Image();
     castleImg.src = `https://raw.githubusercontent.com/EenSelembe/Game-War-Zone/main/public/image/castile-${type}.png`;
 
+    // ===== Ukuran dunia peta (fiktif) =====
     const world = {
-      width: 3000,  // ukuran dunia fiktif map (px)
+      width: 3000,
       height: 2000
     };
 
-    // posisi kastil di dunia (bukan layar)
+    // ===== Posisi awal kamera (tengah map) =====
+    let scale = 0.5;                     // tampilan awal lebih jauh (0.3 = sangat jauh, 1 = normal)
+    let cameraX = world.width / 2;       // posisi kamera di tengah map
+    let cameraY = world.height / 2;      // posisi kamera di tengah map
+
+    // ===== Kastil utama =====
     const castle = {
       x: world.width / 2,
       y: world.height / 2 + 200, // sedikit ke bawah tengah
       size: 180
     };
 
+    let dragging = false;
+    let lastX = 0, lastY = 0;
+    let lastDist = 0;
+
+    // ===== Fungsi bantu =====
     function resize() {
       canvas.width = window.innerWidth;
       canvas.height = window.innerHeight;
@@ -79,7 +84,7 @@
     }
 
     function worldToScreen(wx, wy) {
-      // konversi posisi dunia ke layar
+      // ubah posisi dunia jadi posisi layar berdasarkan kamera
       return {
         x: (wx - cameraX) * scale + canvas.width / 2,
         y: (wy - cameraY) * scale + canvas.height / 2
@@ -90,13 +95,13 @@
       if (!mapImg.complete) return;
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-      // gambar map di posisi kamera
+      // Gambar map
       const mapScreen = worldToScreen(world.width / 2, world.height / 2);
       const mapDrawW = world.width * scale;
       const mapDrawH = world.height * scale;
       ctx.drawImage(mapImg, mapScreen.x - mapDrawW / 2, mapScreen.y - mapDrawH / 2, mapDrawW, mapDrawH);
 
-      // gambar kastil yang menempel di dunia
+      // Gambar kastil
       if (castleImg.complete) {
         const s = castle.size * scale;
         const cScreen = worldToScreen(castle.x, castle.y);
@@ -104,7 +109,7 @@
       }
     }
 
-    // === Interaksi ===
+    // ===== Event Touch =====
     canvas.addEventListener('touchstart', e => {
       if (e.touches.length === 2) {
         const dx = e.touches[0].clientX - e.touches[1].clientX;
@@ -134,7 +139,7 @@
         if (lastDist) {
           const ratio = dist / lastDist;
           scale *= ratio;
-          scale = Math.max(0.8, Math.min(scale, 3));
+          scale = Math.max(0.3, Math.min(scale, 3));
           draw();
         }
         lastDist = dist;
@@ -146,7 +151,7 @@
       lastDist = 0;
     });
 
-    // Mouse support
+    // ===== Event Mouse (PC) =====
     let isMouseDown = false;
     canvas.addEventListener('mousedown', e => {
       isMouseDown = true;
@@ -168,7 +173,7 @@
     window.addEventListener('wheel', e => {
       const zoom = e.deltaY < 0 ? 1.1 : 0.9;
       scale *= zoom;
-      scale = Math.max(0.8, Math.min(scale, 3));
+      scale = Math.max(0.3, Math.min(scale, 3));
       draw();
     });
 
@@ -176,10 +181,11 @@
 
     mapImg.onload = () => {
       resize();
+      draw();
     };
     castleImg.onload = draw;
 
-    // tombol fullscreen
+    // ===== Tombol Fullscreen =====
     btn.addEventListener('click', () => {
       if (document.documentElement.requestFullscreen) {
         document.documentElement.requestFullscreen();
