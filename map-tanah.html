@@ -1,207 +1,219 @@
 <!DOCTYPE html>
 <html lang="id">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-  <title>Map Padang Pasir - Proporsional</title>
-  <style>
-    html, body {
-      margin: 0;
-      padding: 0;
-      height: 100%;
-      overflow: hidden;
-      background: #000;
-      touch-action: none;
-    }
-    canvas {
-      display: block;
-      width: 100vw;
-      height: 100vh;
-      touch-action: none;
-    }
-    #startBtn {
-      position: absolute;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      background: rgba(255, 215, 0, 0.85);
-      color: #000;
-      font-weight: bold;
-      font-size: 20px;
-      padding: 12px 28px;
-      border: none;
-      border-radius: 10px;
-      cursor: pointer;
-      z-index: 10;
-      box-shadow: 0 0 12px gold;
-      transition: opacity .4s ease;
-    }
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Map Interaktif</title>
+<style>
+  html,body{
+    margin:0;padding:0;height:100%;overflow:hidden;
+    background:#000;touch-action:none;
+  }
+  canvas{
+    display:block;width:100vw;height:100vh;touch-action:none;
+  }
+  #startBtn{
+    position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
+    background:rgba(255,215,0,.85);color:#000;font-weight:bold;
+    font-size:20px;padding:12px 28px;border:none;border-radius:10px;
+    cursor:pointer;z-index:10;box-shadow:0 0 12px gold;
+  }
+  #menu {
+    position:absolute;
+    background:rgba(20,20,20,0.95);
+    color:#fff;
+    border:2px solid gold;
+    border-radius:10px;
+    padding:10px;
+    display:none;
+    z-index:20;
+    text-align:center;
+    min-width:140px;
+    box-shadow:0 0 12px #000;
+  }
+  #menu h3 {
+    font-size:16px;
+    color:gold;
+    margin:0 0 6px;
+  }
+  #menu button {
+    background:gold;
+    color:#000;
+    font-weight:bold;
+    border:none;
+    border-radius:6px;
+    padding:6px 12px;
+    cursor:pointer;
+  }
+</style>
 </head>
 <body>
-  <canvas id="mapCanvas"></canvas>
-  <button id="startBtn">Mulai</button>
+<canvas id="mapCanvas"></canvas>
+<button id="startBtn">Mulai</button>
+<div id="menu">
+  <h3 id="menuTitle"></h3>
+  <button onclick="alert('Bangunan sedang dibangun!')">Bangun</button>
+</div>
 
-  <script>
-    const canvas = document.getElementById('mapCanvas');
-    const ctx = canvas.getContext('2d');
-    const btn = document.getElementById('startBtn');
+<script>
+const canvas = document.getElementById('mapCanvas');
+const ctx = canvas.getContext('2d');
+const btn = document.getElementById('startBtn');
+const menu = document.getElementById('menu');
+const menuTitle = document.getElementById('menuTitle');
 
-    const mapImg = new Image();
-    mapImg.src = "https://raw.githubusercontent.com/EenSelembe/Game-War-Zone/main/public/image/map.jpg";
+const mapImg = new Image();
+mapImg.src = "https://raw.githubusercontent.com/EenSelembe/Game-War-Zone/main/public/image/map.jpg";
 
-    const type = localStorage.getItem('castleType') || 'human';
-    const castleImg = new Image();
-    castleImg.src = `https://raw.githubusercontent.com/EenSelembe/Game-War-Zone/main/public/image/castile-${type}.png`;
+const type = localStorage.getItem('castleType') || 'human';
+const castleImg = new Image();
+castleImg.src = `https://raw.githubusercontent.com/EenSelembe/Game-War-Zone/main/public/image/castile-${type}.png`;
 
-    // nilai default sebelum gambar map dimuat
-    let world = { width: 1600, height: 4000 };
+let world = { width:1600, height:4000 };
+let scale = 0.5;
+let cameraX, cameraY;
+let dragging=false,lastX=0,lastY=0,lastDist=0;
 
-    let scale = 0.5;
-    let cameraX, cameraY;
+const buildings = [
+  {name:'Kastil Utama', x:0, y:0, size:300, img:castleImg}
+];
 
-    const castle = { x: 0, y: 0, size: 300 };
+function resize(){
+  canvas.width=window.innerWidth;
+  canvas.height=window.innerHeight;
+  draw();
+}
+function worldToScreen(wx,wy){
+  return{
+    x:(wx-cameraX)*scale+canvas.width/2,
+    y:(wy-cameraY)*scale+canvas.height/2
+  };
+}
+function screenToWorld(sx,sy){
+  return{
+    x:(sx-canvas.width/2)/scale+cameraX,
+    y:(sy-canvas.height/2)/scale+cameraY
+  };
+}
+function clampCamera(){
+  const halfW=(canvas.width/2)/scale,halfH=(canvas.height/2)/scale;
+  const minX=halfW,maxX=world.width-halfW,minY=halfH,maxY=world.height-halfH;
+  cameraX=Math.min(Math.max(cameraX,minX),maxX);
+  cameraY=Math.min(Math.max(cameraY,minY),maxY);
+}
+function draw(){
+  if(!mapImg.complete)return;
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  clampCamera();
+  const mapScreen=worldToScreen(world.width/2,world.height/2);
+  const mapDrawW=world.width*scale,mapDrawH=world.height*scale;
+  ctx.drawImage(mapImg,mapScreen.x-mapDrawW/2,mapScreen.y-mapDrawH/2,mapDrawW,mapDrawH);
+  for(const b of buildings){
+    if(b.img.complete){
+      const s=b.size*scale;
+      const p=worldToScreen(b.x,b.y);
+      ctx.drawImage(b.img,p.x-s/2,p.y-s/2,s,s);
+    }
+  }
+}
 
-    let dragging = false;
-    let lastX = 0, lastY = 0;
-    let lastDist = 0;
+// === klik bangunan ===
+function checkClick(e){
+  const touch=e.touches?e.touches[0]:e;
+  const rect=canvas.getBoundingClientRect();
+  const x=touch.clientX-rect.left;
+  const y=touch.clientY-rect.top;
+  const w=screenToWorld(x,y);
+  for(const b of buildings){
+    const dx=w.x-b.x, dy=w.y-b.y;
+    const dist=Math.sqrt(dx*dx+dy*dy);
+    if(dist<b.size/2){
+      showMenu(b,x,y);
+      return;
+    }
+  }
+  menu.style.display='none';
+}
+function showMenu(building,sx,sy){
+  menuTitle.textContent=building.name;
+  menu.style.left=sx-70+'px';
+  menu.style.top=sy-100+'px';
+  menu.style.display='block';
+}
 
-    // ===== Fungsi bantu =====
-    function resize() {
-      canvas.width = window.innerWidth;
-      canvas.height = window.innerHeight;
+// === kontrol peta ===
+canvas.addEventListener('touchstart',e=>{
+  if(e.touches.length===1){
+    checkClick(e);
+    dragging=true;lastX=e.touches[0].clientX;lastY=e.touches[0].clientY;
+  }else if(e.touches.length===2){
+    const dx=e.touches[0].clientX-e.touches[1].clientX;
+    const dy=e.touches[0].clientY-e.touches[1].clientY;
+    lastDist=Math.hypot(dx,dy);
+  }
+});
+canvas.addEventListener('touchmove',e=>{
+  e.preventDefault();
+  if(e.touches.length===1&&dragging){
+    const dx=(e.touches[0].clientX-lastX)/scale;
+    const dy=(e.touches[0].clientY-lastY)/scale;
+    cameraX-=dx;cameraY-=dy;
+    lastX=e.touches[0].clientX;lastY=e.touches[0].clientY;
+    draw();
+  }else if(e.touches.length===2){
+    const dx=e.touches[0].clientX-e.touches[1].clientX;
+    const dy=e.touches[0].clientY-e.touches[1].clientY;
+    const dist=Math.hypot(dx,dy);
+    if(lastDist){
+      const ratio=dist/lastDist;
+      scale*=ratio;scale=Math.max(0.4,Math.min(scale,2.5));
       draw();
     }
+    lastDist=dist;
+  }
+});
+canvas.addEventListener('touchend',()=>{dragging=false;lastDist=0;});
 
-    function worldToScreen(wx, wy) {
-      return {
-        x: (wx - cameraX) * scale + canvas.width / 2,
-        y: (wy - cameraY) * scale + canvas.height / 2
-      };
-    }
+let isMouseDown=false;
+canvas.addEventListener('mousedown',e=>{
+  checkClick(e);
+  isMouseDown=true;lastX=e.clientX;lastY=e.clientY;
+});
+window.addEventListener('mouseup',()=>isMouseDown=false);
+window.addEventListener('mousemove',e=>{
+  if(!isMouseDown)return;
+  const dx=(e.clientX-lastX)/scale,dy=(e.clientY-lastY)/scale;
+  cameraX-=dx;cameraY-=dy;
+  lastX=e.clientX;lastY=e.clientY;
+  draw();
+});
+window.addEventListener('wheel',e=>{
+  const zoom=e.deltaY<0?1.1:0.9;
+  scale*=zoom;scale=Math.max(0.4,Math.min(scale,2.5));
+  draw();
+});
 
-    function clampCamera() {
-      const halfW = (canvas.width / 2) / scale;
-      const halfH = (canvas.height / 2) / scale;
-      const minX = halfW;
-      const maxX = world.width - halfW;
-      const minY = halfH;
-      const maxY = world.height - halfH;
-      cameraX = Math.min(Math.max(cameraX, minX), maxX);
-      cameraY = Math.min(Math.max(cameraY, minY), maxY);
-    }
+window.addEventListener('resize',resize);
 
-    function draw() {
-      if (!mapImg.complete) return;
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
+mapImg.onload=()=>{
+  const ratio=mapImg.width/mapImg.height;
+  world.height=4000;
+  world.width=world.height*ratio;
+  buildings[0].x=world.width/2;
+  buildings[0].y=world.height-300;
+  cameraX=world.width/2;
+  cameraY=world.height-800;
+  resize();draw();
+};
+castleImg.onload=draw;
 
-      clampCamera();
-
-      const mapScreen = worldToScreen(world.width / 2, world.height / 2);
-      const mapDrawW = world.width * scale;
-      const mapDrawH = world.height * scale;
-
-      ctx.drawImage(mapImg, mapScreen.x - mapDrawW / 2, mapScreen.y - mapDrawH / 2, mapDrawW, mapDrawH);
-
-      if (castleImg.complete) {
-        const s = castle.size * scale;
-        const cScreen = worldToScreen(castle.x, castle.y);
-        ctx.drawImage(castleImg, cScreen.x - s / 2, cScreen.y - s / 2, s, s);
-      }
-    }
-
-    // === GESTURE HANDLER ===
-    function handleTouchMove(e) {
-      e.preventDefault();
-      if (e.touches.length === 1 && dragging) {
-        const dx = (e.touches[0].clientX - lastX) / scale;
-        const dy = (e.touches[0].clientY - lastY) / scale;
-        cameraX -= dx;
-        cameraY -= dy;
-        lastX = e.touches[0].clientX;
-        lastY = e.touches[0].clientY;
-        draw();
-      } else if (e.touches.length === 2) {
-        const dx = e.touches[0].clientX - e.touches[1].clientX;
-        const dy = e.touches[0].clientY - e.touches[1].clientY;
-        const dist = Math.hypot(dx, dy);
-        if (lastDist) {
-          const ratio = dist / lastDist;
-          scale *= ratio;
-          scale = Math.max(0.4, Math.min(scale, 2.5));
-          draw();
-        }
-        lastDist = dist;
-      }
-    }
-
-    // === EVENT ===
-    canvas.addEventListener('touchstart', e => {
-      if (e.touches.length === 2) {
-        const dx = e.touches[0].clientX - e.touches[1].clientX;
-        const dy = e.touches[0].clientY - e.touches[1].clientY;
-        lastDist = Math.hypot(dx, dy);
-      } else if (e.touches.length === 1) {
-        dragging = true;
-        lastX = e.touches[0].clientX;
-        lastY = e.touches[0].clientY;
-      }
-    });
-    canvas.addEventListener('touchmove', handleTouchMove);
-    canvas.addEventListener('touchend', () => { dragging = false; lastDist = 0; });
-
-    let isMouseDown = false;
-    canvas.addEventListener('mousedown', e => { isMouseDown = true; lastX = e.clientX; lastY = e.clientY; });
-    window.addEventListener('mouseup', () => isMouseDown = false);
-    window.addEventListener('mousemove', e => {
-      if (!isMouseDown) return;
-      const dx = (e.clientX - lastX) / scale;
-      const dy = (e.clientY - lastY) / scale;
-      cameraX -= dx;
-      cameraY -= dy;
-      lastX = e.clientX;
-      lastY = e.clientY;
-      draw();
-    });
-
-    window.addEventListener('wheel', e => {
-      const zoom = e.deltaY < 0 ? 1.1 : 0.9;
-      scale *= zoom;
-      scale = Math.max(0.4, Math.min(scale, 2.5));
-      draw();
-    });
-
-    window.addEventListener('resize', resize);
-
-    // === Ketika gambar map sudah dimuat ===
-    mapImg.onload = () => {
-      // Hitung rasio asli gambar
-      const ratio = mapImg.width / mapImg.height;
-
-      // Tetapkan ukuran dunia berdasarkan tinggi vertikal, jaga proporsinya
-      world.height = 4000;
-      world.width = world.height * ratio;
-
-      // Posisi kastil dan kamera
-      castle.x = world.width / 2;
-      castle.y = world.height - 300;
-
-      cameraX = world.width / 2;
-      cameraY = world.height - 800;
-
-      resize();
-      draw();
-    };
-    castleImg.onload = draw;
-
-    // === Tombol Fullscreen ===
-    btn.addEventListener('click', () => {
-      if (document.documentElement.requestFullscreen) {
-        document.documentElement.requestFullscreen();
-      }
-      btn.style.display = 'none';
-      draw();
-    });
-  </script>
+btn.addEventListener('click',()=>{
+  if(document.documentElement.requestFullscreen){
+    document.documentElement.requestFullscreen();
+  }
+  btn.style.display='none';
+  draw();
+});
+</script>
 </body>
 </html>
