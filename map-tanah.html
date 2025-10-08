@@ -46,8 +46,6 @@
     margin:4px;
     cursor:pointer;
   }
-
-  /* Tombol ceklis dan silang */
   #confirmButtons {
     position:absolute;
     bottom:80px;
@@ -83,9 +81,9 @@
 <!-- menu pilihan jenis bangunan -->
 <div id="buildMenu">
   <h3>Pilih Bangunan</h3>
-  <button onclick="pilihBangunan('Rumah Warga')">🏠 Rumah Warga</button><br>
-  <button onclick="pilihBangunan('Gudang')">📦 Gudang</button><br>
-  <button onclick="pilihBangunan('Tempat Latihan')">⚔️ Tempat Latihan</button>
+  <button onclick="pilihBangunan('civil')">🏠 Rumah Warga</button><br>
+  <button onclick="pilihBangunan('stroge')">📦 Gudang</button><br>
+  <button onclick="pilihBangunan('army')">⚔️ Tempat Latihan</button>
 </div>
 
 <!-- tombol ceklis dan silang -->
@@ -109,20 +107,21 @@ const btnNo=document.getElementById('btnNo');
 const mapImg=new Image();
 mapImg.src="https://raw.githubusercontent.com/EenSelembe/Game-War-Zone/main/public/image/map.jpg";
 
-const type=localStorage.getItem('castleType')||'human';
+// suku player (human / animal / robot)
+const faction=localStorage.getItem('castleType') || 'human';
 const castleImg=new Image();
-castleImg.src=`https://raw.githubusercontent.com/EenSelembe/Game-War-Zone/main/public/image/castile-${type}.png`;
+castleImg.src=`https://raw.githubusercontent.com/EenSelembe/Game-War-Zone/main/public/image/castile-${faction}.png`;
 
 const world={width:1600,height:4000};
 let scale=0.5;
-let cameraX, cameraY;
+let cameraX,cameraY;
 let dragging=false,lastX=0,lastY=0,lastDist=0;
 
 let mode="normal"; // normal | placing
 let ghostBuilding=null;
 
 const buildings=[
-  {name:'Kastil Utama',x:0,y:0,size:300,img:castleImg}
+  {type:'castile',name:'Kastil Utama',x:0,y:0,size:300,img:castleImg}
 ];
 
 function resize(){
@@ -162,10 +161,7 @@ function draw(){
     const s=ghostBuilding.size*scale;
     const p=worldToScreen(ghostBuilding.x,ghostBuilding.y);
     ctx.globalAlpha=0.6;
-    ctx.fillStyle="lime";
-    ctx.beginPath();
-    ctx.arc(p.x,p.y,s/2,0,Math.PI*2);
-    ctx.fill();
+    ctx.drawImage(ghostBuilding.img,p.x-s/2,p.y-s/2,s,s);
     ctx.globalAlpha=1;
   }
 }
@@ -184,7 +180,7 @@ function checkClick(e){
   const w=screenToWorld(x,y);
 
   if(mode==="placing"){
-    // geser posisi bayangan ke posisi tap
+    // geser posisi bayangan
     ghostBuilding.x=w.x;
     ghostBuilding.y=w.y;
     draw();
@@ -209,24 +205,35 @@ btnBangun.onclick=function(){
   buildMenu.style.top=parseInt(menu.style.top)+'px';
 };
 
-function pilihBangunan(nama){
+// === PILIH JENIS BANGUNAN ===
+function pilihBangunan(type){
   buildMenu.style.display='none';
   mode="placing";
   confirmBox.style.display='flex';
+
+  // ambil gambar sesuai suku dan jenis
+  const img=new Image();
+  img.src=`https://raw.githubusercontent.com/EenSelembe/Game-War-Zone/main/public/image/${type}-${faction}.png`;
+
   ghostBuilding={
-    name:nama,
+    type:type,
+    name:
+      type==="civil"?"Rumah Warga":
+      type==="stroge"?"Gudang":
+      "Tempat Latihan",
     x:cameraX,
     y:cameraY,
     size:200,
-    img:null
+    img:img
   };
   draw();
-  alert("Geser peta lalu sentuh posisi bangunan, lalu tekan ✔️ untuk membangun atau ✖️ untuk batal.");
+  alert("Geser peta, tap posisi bangunan, lalu tekan ✔️ untuk membangun atau ✖️ untuk batal.");
 }
 
+// === KONFIRMASI ===
 btnYes.onclick=function(){
   if(!ghostBuilding)return;
-  // cek jarak dengan bangunan lain
+  // cek jarak antar bangunan
   let overlap=false;
   for(const b of buildings){
     const dx=b.x-ghostBuilding.x,dy=b.y-ghostBuilding.y;
@@ -237,11 +244,6 @@ btnYes.onclick=function(){
   if(overlap){alert("Terlalu dekat dengan bangunan lain!");return;}
   // buat bangunan baru
   const newB={...ghostBuilding};
-  // gunakan ikon sesuai jenis
-  newB.img=new Image();
-  if(newB.name.includes('Rumah')) newB.img.src='https://cdn-icons-png.flaticon.com/512/235/235889.png';
-  else if(newB.name.includes('Gudang')) newB.img.src='https://cdn-icons-png.flaticon.com/512/3135/3135703.png';
-  else newB.img.src='https://cdn-icons-png.flaticon.com/512/646/646674.png';
   buildings.push(newB);
   ghostBuilding=null;
   mode="normal";
@@ -249,7 +251,6 @@ btnYes.onclick=function(){
   draw();
   alert("Bangunan berhasil dibangun!");
 };
-
 btnNo.onclick=function(){
   ghostBuilding=null;
   mode="normal";
@@ -257,6 +258,7 @@ btnNo.onclick=function(){
   draw();
 };
 
+// === GESTURE ===
 canvas.addEventListener('touchstart',e=>{
   if(e.touches.length===1){
     checkClick(e);
